@@ -1,3 +1,6 @@
+# 🚀 INDICAMOS EL PUENTE DE LA RAÍZ AL INICIO DEL ARCHIVO
+FROM project_root AS repo_source
+
 # ==========================================
 # ETAPA 1: Constructor (Build Stage)
 # ==========================================
@@ -5,10 +8,8 @@ FROM mirror.gcr.io/library/python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Forzar IPv4 para evitar timeouts en redes inestables
 RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
-# Instalar herramientas de compilación pesadas (Rust, Cargo, CMake, etc.)
 RUN for i in 1 2 3 4 5; do \
         apt-get update && \
         apt-get install -y --no-install-recommends \
@@ -24,8 +25,6 @@ RUN for i in 1 2 3 4 5; do \
     done \
     && rm -rf /var/lib/apt/lists/*
 
-# Variables de entorno optimizadas para la compilación de PIP
-# CORRECCIÓN: Se cambió 'https://pypi.org' por 'https://pypi.org' (Ruta correcta del índice)
 ENV PIP_DEFAULT_TIMEOUT=2000 \
     PIP_RETRIES=50 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -33,12 +32,10 @@ ENV PIP_DEFAULT_TIMEOUT=2000 \
 
 COPY requirements.txt .
 
-# Compilar e instalar las dependencias directamente en un directorio local aislado
 RUN for i in 1 2 3 4 5; do \
         pip install --user --no-cache-dir -r requirements.txt \
         && break || (echo "Reintentando pip en 10s..." && sleep 10); \
     done
-
 
 # ==========================================
 # ETAPA 2: Imagen Final de Producción (Runtime)
@@ -47,28 +44,25 @@ FROM mirror.gcr.io/library/python:3.11-slim
 
 WORKDIR /app
 
-# Variables de entorno esenciales para la ejecución
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
     PATH=/root/.local/bin:$PATH
 
-# Instalar solo las librerías compartidas de ejecución en Debian (Sin compiladores)
 RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 \
     && apt-get update && apt-get install -y --no-install-recommends \
         libopenblas-dev \
         libomp-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 🧠 OPTIMIZACIÓN CLAVE: Traer solo las dependencias Python ya compiladas de la etapa anterior
-# Esto deja fuera a Rust, Cargo, GCC y CMake, reduciendo la imagen hasta un 70%
+# Traer las dependencias compiladas de Python
 COPY --from=builder /root/.local /root/.local
 
 # Copiar archivos locales del propio worker_service
 COPY main.py /app/main.py
 
-# Copiar carpetas externas mapeadas mediante project_root en GitHub Actions
-COPY --from=project_root app /app/app
-COPY --from=project_root app/config /app/config
+# 💡 SOLUCIÓN REAL: Traemos las carpetas desde la etapa "repo_source" que definimos arriba
+COPY --from=repo_source app /app/app
+COPY --from=repo_source app/config /app/config
 
 EXPOSE 9000
 
