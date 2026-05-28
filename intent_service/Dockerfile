@@ -36,7 +36,7 @@ RUN for i in 1 2 3 4 5; do \
 done
 
 # Copiar el servicio de intención
-COPY intent_service.py /app/intent_service.py
+COPY intent_semantic.py /app/intent_semantic.py
 
 # Copiar el modelo (opcional, si lo empaquetas dentro del contenedor)
 # COPY models/qwen2.5-1.5b-instruct-q4_k_m.gguf /app/models/
