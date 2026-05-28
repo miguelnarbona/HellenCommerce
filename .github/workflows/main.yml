@@ -121,5 +121,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notificar y desplegar en Oracle Cloud
+        continue-on-error: true
         run: |
           curl -X POST http://${{ secrets.ORACLE_SERVER_IP }}:10001/hooks/deploy-hellen-commerce
