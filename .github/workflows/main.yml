@@ -92,6 +92,7 @@ jobs:
           # 💡 Si la matriz define un 'file' específico lo usa; si no, busca el por defecto en el contexto
           file: ${{ matrix.file }}
           push: true
+          no-cache: true # <--- Fuerza a Docker a ignorar la caché vieja y compilar limpio
           tags: |
             ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.name }}:latest
             ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.name }}:${{ github.sha }}
