@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  osrm_usa:
+    image: osrm/osrm-backend
+    container_name: osrm_usa
+    command: osrm-routed /data/usa.osrm
+    volumes:
+      - /mnt/c/HellenData/osrm/usa:/data
+    networks:
+      - hellen_net
+
+networks:
+  hellen_net:
+    external: true
+

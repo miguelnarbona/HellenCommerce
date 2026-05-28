@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  fastapi_service:
+    build:
+      context: ./fastapi_service
+    image: hellen-fastapi
+    container_name: fastapi_service
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_SERVICE_URL=http://worker_service:9000
+      - HF_API_KEY=${HF_API_KEY}
+      - MISTRAL_URL=http://mistral_service:9001
+      - EMBEDDINGS_PATH=/models/minilm/all-MiniLM-L6-v2
+      - SQLITE_PATH=/sqlite/hellencommerce.db
+      - CHROMA_HOST=chromadb_service
+      - CHROMA_PORT=8000
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+    volumes:
+      - ./app:/app/app
+      - ./app/prompts:/app/prompts
+      - ./config:/app/config
+      - /mnt/c/HellenData/sqlite_store:/sqlite
+      - /mnt/c/HellenData/mistral:/models/mistral
+      - /mnt/c/HellenData/minilm:/models/minilm
+    networks:
+      - hellen_net
+
+networks:
+  hellen_net:
+    external: true

@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  mistral_service:
+    build:
+      context: ./mistral_service
+    image: hellen-mistral
+    container_name: mistral_service
+    ports:
+      - "9001:9001"
+    volumes:
+      - ./app/prompts:/app/prompts
+      - /mnt/c/HellenData/mistral:/models/mistral
+    networks:
+      - hellen_net
+    mem_limit: 6g
+    cpus: 6
+
+networks:
+  hellen_net:
+    external: true
