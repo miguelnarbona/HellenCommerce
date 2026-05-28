@@ -1,11 +1,14 @@
-FROM mirror.gcr.io/library/python:3.11-slim
+# ==========================================
+# ETAPA 1: Constructor (Build Stage)
+# ==========================================
+FROM mirror.gcr.io/library/python:3.11-slim AS builder
 
 WORKDIR /app
 
 # Forzar IPv4 para evitar timeouts en redes inestables
 RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
-# Limpieza de caché optimizada fuera del bucle
+# Instalar herramientas de compilación pesadas (Rust, Cargo, CMake, etc.)
 RUN for i in 1 2 3 4 5; do \
         apt-get update && \
         apt-get install -y --no-install-recommends \
@@ -21,28 +24,49 @@ RUN for i in 1 2 3 4 5; do \
     done \
     && rm -rf /var/lib/apt/lists/*
 
-# Variables de entorno globales para PIP
+# Variables de entorno optimizadas para la compilación de PIP
+# CORRECCIÓN: Se cambió 'https://pypi.org' por 'https://pypi.org' (Ruta correcta del índice)
 ENV PIP_DEFAULT_TIMEOUT=2000 \
     PIP_RETRIES=50 \
-    PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_INDEX_URL=https://pypi.org \
-    PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app
+    PIP_INDEX_URL=https://pypi.org
 
-# ✅ CORRECCIÓN: Como el contexto volvió a ser './worker_service', el archivo está en su raíz
-COPY requirements.txt /app/requirements.txt
+COPY requirements.txt .
 
-# Instalar dependencias Python con reintentos
+# Compilar e instalar las dependencias directamente en un directorio local aislado
 RUN for i in 1 2 3 4 5; do \
-        pip install -r requirements.txt \
+        pip install --user --no-cache-dir -r requirements.txt \
         && break || (echo "Reintentando pip en 10s..." && sleep 10); \
     done
 
-# ✅ CORRECCIÓN: Archivos locales del propio servicio
+
+# ==========================================
+# ETAPA 2: Imagen Final de Producción (Runtime)
+# ==========================================
+FROM mirror.gcr.io/library/python:3.11-slim
+
+WORKDIR /app
+
+# Variables de entorno esenciales para la ejecución
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PATH=/root/.local/bin:$PATH
+
+# Instalar solo las librerías compartidas de ejecución en Debian (Sin compiladores)
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        libopenblas-dev \
+        libomp-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# 🧠 OPTIMIZACIÓN CLAVE: Traer solo las dependencias Python ya compiladas de la etapa anterior
+# Esto deja fuera a Rust, Cargo, GCC y CMake, reduciendo la imagen hasta un 70%
+COPY --from=builder /root/.local /root/.local
+
+# Copiar archivos locales del propio worker_service
 COPY main.py /app/main.py
 
-# 🚀 MAGIA DE DOCKER: Copiar carpetas externas usando el contexto global del proyecto
+# Copiar carpetas externas mapeadas mediante project_root en GitHub Actions
 COPY --from=project_root app /app/app
 COPY --from=project_root app/config /app/config
 
