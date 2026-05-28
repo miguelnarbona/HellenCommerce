@@ -1,6 +1,3 @@
-# 🚀 INDICAMOS EL PUENTE DE LA RAÍZ AL INICIO DEL ARCHIVO
-FROM project_root AS repo_source
-
 # ==========================================
 # ETAPA 1: Constructor (Build Stage)
 # ==========================================
@@ -30,7 +27,8 @@ ENV PIP_DEFAULT_TIMEOUT=2000 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_INDEX_URL=https://pypi.org
 
-COPY requirements.txt .
+# Como el contexto es la raíz del proyecto, especificamos la subcarpeta
+COPY worker_service/requirements.txt .
 
 RUN for i in 1 2 3 4 5; do \
         pip install --user --no-cache-dir -r requirements.txt \
@@ -57,12 +55,12 @@ RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 \
 # Traer las dependencias compiladas de Python
 COPY --from=builder /root/.local /root/.local
 
-# Copiar archivos locales del propio worker_service
-COPY main.py /app/main.py
+# Copia los archivos del servicio desde la raíz del proyecto
+COPY worker_service/main.py /app/main.py
 
-# 💡 SOLUCIÓN REAL: Traemos las carpetas desde la etapa "repo_source" que definimos arriba
-COPY --from=repo_source app /app/app
-COPY --from=repo_source app/config /app/config
+# Copia las carpetas compartidas y vecinas de forma directa y nativa
+COPY app /app/app
+COPY app/config /app/config
 
 EXPOSE 9000
 
