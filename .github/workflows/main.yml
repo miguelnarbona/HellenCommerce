@@ -66,14 +66,25 @@ jobs:
             context: ./services/venta_service
 
     steps:
+      # PASO 1: Maximizar el espacio en disco eliminando software innecesario de GitHub
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false # Deja esto en false para no romper buildx
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1. Configurar emulador QEMU (Esencial para compilar ARM64 desde servidores AMD de GitHub)
+      # 2. Configurar emulador QEMU (Esencial para compilar ARM64 desde servidores AMD de GitHub)
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # 2. Configurar Docker Buildx para habilitar compilación avanzada
+      # 3. Configurar Docker Buildx para habilitar compilación avanzada
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -88,14 +99,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3. Compilar usando Matrix para múltiples arquitecturas simultáneamente
+      # 4. Compilar usando Matrix para múltiples arquitecturas simultáneamente
       - name: Build and push service
-        uses: docker/build-push-action@v6  # Actualizado a v6 para soporte nativo de Node.js 24
+        uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           push: true
-          no-cache: true
           # Habilita la compatibilidad híbrida para tu entorno local (amd64) y tu Oracle Ampere (arm64)
           platforms: linux/amd64,linux/arm64
           # Corrige de manera definitiva el bug visual de la columna "OS/Arch" en GitHub
@@ -105,3 +115,11 @@ jobs:
             ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  auto-deploy:
+    needs: build-and-push # Espera obligatoriamente a que terminen de compilar con éxito las imágenes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notificar y desplegar en Oracle Cloud
+        run: |
+          curl -X POST http://${{ secrets.ORACLE_SERVER_IP }}:10001/hooks/deploy-hellen-commerce
