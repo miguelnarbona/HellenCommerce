@@ -1,0 +1,21 @@
+﻿version: '3.8'
+
+services:
+  admin_dashboard:
+    build:
+      context: ..
+      dockerfile: admin_dashboard/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - LOGGING_API_URL=http://logging_service:8099
+    volumes:
+      - ../app:/app/shared
+      - .:/app/admin_dashboard
+    depends_on:
+      - logging_service
+
+networks:
+  default:
+    name: hellen_network
+    external: true

@@ -1,0 +1,74 @@
+vendo {MERCANCIA}
+bendo {MERCANCIA}
+vendemos {MERCANCIA}
+bendemos {MERCANCIA}
+oferto {MERCANCIA}
+ofertamos {MERCANCIA}
+como vendedor
+hay comprador
+hay compradores
+busco comprador
+busco compradores
+estoy vendiendo {MERCANCIA}
+estoy bendiendo {MERCANCIA}
+estoy ofertando {MERCANCIA}
+pongo en venta {MERCANCIA}
+pongo a la venta {MERCANCIA}
+pongo en benta {MERCANCIA}
+pongo a la benta {MERCANCIA}
+necesito vender {MERCANCIA}
+en venta
+a la venta
+poner en venta {MERCANCIA}
+pon en venta {MERCANCIA}
+pon a la venta {MERCANCIA}
+poniendo a la venta {MERCANCIA}
+necesito poner en venta {MERCANCIA}
+tengo {MERCANCIA}
+tengo {MERCANCIA} a
+tengo {MERCANCIA} a la venta
+tengo {MERCANCIA} en venta
+tengo {MERCANCIA} para vender
+tengo {MERCANCIA} en oferta
+tengo {MERCANCIA} para la venta
+tengo disponible {MERCANCIA} para vender
+tengo disponible {MERCANCIA} para la venta
+dispongo de {MERCANCIA}
+dispongo {MERCANCIA} para vender
+dispongo {MERCANCIA} para la venta
+comercializo {MERCANCIA}
+comercializamos {MERCANCIA}
+estoy comercializando {MERCANCIA}
+estoy vendiendo {MERCANCIA} barato
+estoy vendiendo {MERCANCIA} caro
+estoy vendiendo {MERCANCIA} rebajado
+estoy vendiendo {MERCANCIA} en oferta
+estoy vendiendo {MERCANCIA} en liquidación
+estoy vendiendo {MERCANCIA} en rebaja
+estoy vendiendo {MERCANCIA} en promoción
+estoy vendiendo {MERCANCIA} en combo
+estoy vendiendo {MERCANCIA} al por mayor
+estoy vendiendo {MERCANCIA} al detalle
+estoy vendiendo {MERCANCIA} suelto
+estoy vendiendo {MERCANCIA} por unidad
+estoy vendiendo {MERCANCIA} por caja
+estoy vendiendo {MERCANCIA} por cajón
+estoy vendiendo {MERCANCIA} por rueda
+estoy vendiendo {MERCANCIA} por paquete
+estoy vendiendo {MERCANCIA} por docena
+estoy vendiendo {MERCANCIA} por libra
+estoy vendiendo {MERCANCIA} por kilo
+estoy vendiendo {MERCANCIA} por saco
+estoy vendiendo {MERCANCIA} por bolsa
+estoy vendiendo {MERCANCIA} por lote
+estoy vendiendo {MERCANCIA} por mayor
+estoy vendiendo {MERCANCIA} al menudeo
+estoy vendiendo {MERCANCIA} al menoreo
+estoy vendiendo {MERCANCIA} al detal
+estoy vendiendo mercancía
+estoy vendiendo producto
+estoy vendiendo artículos
+estoy vendiendo cosas
+estoy vendiendo lo mío
+estoy vendiendo lo que tengo
+estoy vendiendo lo que sobra

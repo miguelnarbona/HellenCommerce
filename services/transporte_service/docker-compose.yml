@@ -1,0 +1,21 @@
+﻿version: '3.8'
+
+services:
+  transporte_service:
+    build:
+      context: ..
+      dockerfile: transporte_service/Dockerfile
+    ports:
+      - "8017:8017"
+    environment:
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ../app:/app/shared
+      - .:/app/transporte_service
+    depends_on:
+      - logging_service
+
+networks:
+  default:
+    name: hellen_network
+    external: true

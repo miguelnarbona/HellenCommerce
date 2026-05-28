@@ -1,0 +1,21 @@
+﻿version: '3.8'
+
+services:
+  intent_service:
+    build:
+      context: ..
+      dockerfile: intent_service/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ../app:/app/shared
+      - .:/app/intent_service
+    depends_on:
+      - logging_service
+
+networks:
+  default:
+    name: hellen_network
+    external: true

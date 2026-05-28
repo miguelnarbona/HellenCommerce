@@ -1,0 +1,21 @@
+﻿version: '3.8'
+
+services:
+  servicio_service:
+    build:
+      context: ..
+      dockerfile: servicio_service/Dockerfile
+    ports:
+      - "8022:8022"
+    environment:
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ../app:/app/shared
+      - .:/app/servicio_service
+    depends_on:
+      - logging_service
+
+networks:
+  default:
+    name: hellen_network
+    external: true

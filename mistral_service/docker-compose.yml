@@ -1,0 +1,21 @@
+﻿version: '3.8'
+
+services:
+  mistral_service:
+    build:
+      context: ..
+      dockerfile: mistral_service/Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ../app:/app/shared
+      - .:/app/mistral_service
+    depends_on:
+      - logging_service
+
+networks:
+  default:
+    name: hellen_network
+    external: true

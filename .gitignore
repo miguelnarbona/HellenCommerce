@@ -1,0 +1,70 @@
+# ============================================================
+# HELLENCOMMERCE 2.0.1 - .gitignore
+# ============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Datos y Bases de Datos
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+app/data/
+app/logs/
+
+# Modelos (archivos grandes)
+*.gguf
+*.bin
+*.pt
+*.pth
+app/models/
+
+# Entorno
+.env
+.env.local
+.env.*.local
+
+# Credenciales
+*.json
+!package.json
+firebase-credentials.json
+serviceAccountKey.json
+
+# Logs
+*.log
+logs/
+
+# Docker (opcional, si no se quieren compartir configs locales)
+# .docker/
+
+# Sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporales
+tmp/
+temp/
+*.tmp
+*.bak

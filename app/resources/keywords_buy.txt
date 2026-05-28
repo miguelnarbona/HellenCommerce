@@ -1,0 +1,233 @@
+algun vendedor de
+vendedor de
+vendedores de
+mercancia de
+producto de
+como comprador
+precio
+cuánto
+mostrar
+puedes mostrar
+puedes mostrarme
+me podras mostrar
+tiene disponible
+comprar
+comprar un
+comprar unos
+comprar algunos
+comprar varios
+comprar eso
+comprar esos
+comprar el 
+comprar los
+tendra
+tendran
+tienen
+ya tienen
+ya tienes
+ya les llego
+ya les llegaron
+abra
+habra
+compro
+busco
+ando buscando
+ando comprando
+necesito comprar
+necesito adquirir
+necesito hacerme de
+necesito un {MERCANCIA}
+necesito una {MERCANCIA}
+necesito unas {MERCANCIA}
+vendera
+venden
+venderan
+quiero comprar
+costo
+valor
+cuanto vale
+cuánto vale
+en cuánto lo tienes
+en cuanto lo tienes
+en cuánto tiene
+en cuanto tiene
+cuál es el precio
+cual es el precio
+que precio tiene
+qué cuesta
+que cuesta
+cuánto está saliendo
+cuanto está saliendo
+en qué precio está
+en que precio esta
+cuánto cuesta
+cuanto cuesta
+en cuánto sale
+en cuanto sale
+qué precio tiene
+a cómo está
+a cómo esta
+a qué precio
+a que precio
+ha qué precio
+ha que precio
+ha qué presio
+a qué presio
+a que presio
+tiene {MERCANCIA} disponible
+tienes {MERCANCIA} disponible
+tienes disponible
+tienes disponibilidad
+tienes disponivle
+tiene disponible
+tiene disponivle
+te queda
+te quedan
+te quedaran
+t queda
+t quedara
+t qda
+t qdan
+t qdaran
+le queda
+le quedan
+le qda
+le qdan
+hay
+hay disponible
+hay {MERCANCIA} en venta
+hay {MERCANCIA} en oferta
+tienes en existencia
+tiene en existencia
+tienen en existencia
+tendra en existencia
+tendran en existencia
+habra en existencia
+abra en existencia
+abran en existencia
+habran en existencia
+tienes ahora
+tienen ahora
+tendra ahora
+tendran ahora
+tienes a mano
+tendra a mano
+tendras a mano
+tendran a mano
+tienes stock
+tiene stock
+tendra stock
+tendras stock
+tienen stock
+tendras {MERCANCIA}
+tendras alguna {MERCANCIA}
+tendra alguna {MERCANCIA}
+tendras algun {MERCANCIA}
+tendra algun {MERCANCIA}
+tendras una {MERCANCIA}
+tendra una {MERCANCIA}
+tendras un {MERCANCIA}
+tendra {MERCANCIA}
+tendrás {MERCANCIA}
+tendrán {MERCANCIA}
+le quedará {MERCANCIA}
+le quedara {MERCANCIA}
+les queda {MERCANCIA}
+les quedan {MERCANCIA}
+le quedan {MERCANCIA}
+habrá disponible
+habra disponible
+abrá disponible
+abra disponible
+habrá disponibilidad
+habra disponibilidad
+abrá disponibilidad
+abra disponibilidad
+quedará {MERCANCIA}
+quedara {MERCANCIA}
+quedarán {MERCANCIA}
+quedaran {MERCANCIA}
+habrá alguno {MERCANCIA}
+habra alguno {MERCANCIA}
+abrá alguno {MERCANCIA}
+abra alguno {MERCANCIA}
+habrán algunos {MERCANCIA}
+habran algunos {MERCANCIA}
+abran algunos {MERCANCIA}
+abrán algunos {MERCANCIA}
+estoy comprando {MERCANCIA}
+toy comprando {MERCANCIA}
+deseo comprar {MERCANCIA}
+deseamos comprar {MERCANCIA}
+deseo adquirir {MERCANCIA}
+deseamos adquirir {MERCANCIA}
+busco comprar {MERCANCIA}
+busco vendedor de {MERCANCIA}
+busco vendedores de {MERCANCIA}
+buscamos comprar {MERCANCIA}
+buscando comprar {MERCANCIA}
+buscando la compra de {MERCANCIA}
+buscamos la compra de {MERCANCIA}
+necesito comprar {MERCANCIA}
+necesitamos comprar {MERCANCIA}
+estoy interesado en comprar {MERCANCIA}
+estamos interesado en comprar {MERCANCIA}
+estoy interesado en adquirir {MERCANCIA}
+estamos interesado en adquirir {MERCANCIA}
+queremos comprar {MERCANCIA}
+requiero {MERCANCIA}
+estoy interesado en {MERCANCIA}
+estamos interesado en {MERCANCIA}
+quiero encontrar {MERCANCIA}
+queremos encontrar {MERCANCIA}
+quisiera encontrar {MERCANCIA}
+quisieramos encontrar {MERCANCIA}
+estoy tratando de conseguir {MERCANCIA}
+estamos tratando de conseguir {MERCANCIA}
+tamos tratando de conseguir {MERCANCIA}
+tamos tratando de comprar {MERCANCIA}
+estamos tratando de comprar {MERCANCIA}
+intento comprar {MERCANCIA}
+intentamos comprar {MERCANCIA}
+intento adquirir {MERCANCIA}
+estoy tratando de adquirir {MERCANCIA}
+estamos tratando de adquirir {MERCANCIA}
+toy tratando de adquirir {MERCANCIA}
+tamos tratando de adquirir {MERCANCIA}
+estoy detrás de {MERCANCIA}
+estoy detras de {MERCANCIA}
+toy detrás de {MERCANCIA}
+toy detras de {MERCANCIA}
+estoy averiguando por {MERCANCIA}
+toy averiguando por {MERCANCIA}
+estamos averiguando por {MERCANCIA}
+tamos averiguando por {MERCANCIA}
+estoy buscando para comprar {MERCANCIA}
+estamos buscando para comprar {MERCANCIA}
+toy buscando para comprar {MERCANCIA}
+tamos buscando para comprar {MERCANCIA}
+tendras en venta {MERCANCIA}
+tendras a la venta {MERCANCIA}
+comerme {MERCANCIA}
+comerme un {MERCANCIA}
+comerme una {MERCANCIA}
+probar un {MERCANCIA}
+probar una {MERCANCIA}
+comprarme {MERCANCIA}
+comprarme un {MERCANCIA}
+comprarme una {MERCANCIA}
+tomarme {MERCANCIA}
+tomarme un {MERCANCIA}
+tomarme una {MERCANCIA}
+chuparme {MERCANCIA}
+chuparme un {MERCANCIA}
+chuparme una {MERCANCIA}
+morder {MERCANCIA}
+morder un {MERCANCIA}
+morder una {MERCANCIA}
+saborear {MERCANCIA}
+saborear un {MERCANCIA}
+saborear una {MERCANCIA}
+fumar {MERCANCIA}
+fumar un {MERCANCIA}
+fumar una {MERCANCIA}

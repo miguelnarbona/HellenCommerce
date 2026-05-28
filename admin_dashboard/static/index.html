@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HellenCommerce 2.0 — Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #0a0d14;
+      --surface:   #111827;
+      --surface2:  #1c2536;
+      --border:    #1e2d45;
+      --accent:    #3b82f6;
+      --accent2:   #06b6d4;
+      --success:   #10b981;
+      --warn:      #f59e0b;
+      --danger:    #ef4444;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --mono:      'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: .02em; }
+    header h1 span { color: var(--accent2); }
+    #status-badge {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .8rem; color: var(--muted);
+    }
+    #status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted);
+      transition: background .4s;
+    }
+    #status-dot.live { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+    /* LAYOUT */
+    .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+
+    /* STAT CARDS */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+    }
+    .stat-card .label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .4rem; }
+    .stat-card .value { font-size: 1.8rem; font-weight: 700; }
+    .stat-card.ok    .value { color: var(--success); }
+    .stat-card.warn  .value { color: var(--warn); }
+    .stat-card.danger.value { color: var(--danger); }
+    .stat-card.info  .value { color: var(--accent2); }
+
+    /* TABS */
+    .tabs { display: flex; gap: .5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .tab {
+      padding: .5rem 1.1rem;
+      font-size: .85rem; font-weight: 500;
+      cursor: pointer; border-bottom: 2px solid transparent;
+      color: var(--muted); transition: all .2s;
+    }
+    .tab.active, .tab:hover { color: var(--text); border-color: var(--accent); }
+
+    /* PANEL */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* FILTERS */
+    .filters { display: flex; gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .filters select, .filters input {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px;
+      padding: .4rem .75rem; font-size: .82rem; font-family: inherit;
+    }
+    .btn {
+      padding: .4rem .9rem; border-radius: 6px; font-size: .82rem;
+      font-weight: 500; cursor: pointer; border: none; transition: opacity .2s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn-primary  { background: var(--accent); color: #fff; }
+    .btn-success  { background: var(--success); color: #fff; }
+    .btn-danger   { background: var(--danger);  color: #fff; }
+
+    /* TABLE */
+    .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th {
+      background: var(--surface2); text-align: left;
+      padding: .65rem 1rem; color: var(--muted); font-weight: 500;
+      text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--border);
+    }
+    td { padding: .65rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(59,130,246,.04); }
+
+    /* BADGES */
+    .badge {
+      display: inline-block; padding: .2rem .55rem;
+      border-radius: 999px; font-size: .72rem; font-weight: 600; letter-spacing: .04em;
+    }
+    .badge-error    { background: rgba(239,68,68,.15);   color: #f87171; }
+    .badge-warning  { background: rgba(245,158,11,.15);  color: #fbbf24; }
+    .badge-info     { background: rgba(59,130,246,.15);  color: #93c5fd; }
+    .badge-ok       { background: rgba(16,185,129,.15);  color: #6ee7b7; }
+    .badge-pending  { background: rgba(245,158,11,.15);  color: #fbbf24; }
+    .badge-approved { background: rgba(16,185,129,.15);  color: #6ee7b7; }
+    .badge-rejected { background: rgba(239,68,68,.15);   color: #f87171; }
+    .badge-applied  { background: rgba(6,182,212,.15);   color: #67e8f9; }
+
+    /* CODE BLOCK */
+    pre {
+      background: #0d1117; border: 1px solid var(--border);
+      border-radius: 6px; padding: .75rem 1rem;
+      font-family: var(--mono); font-size: .78rem;
+      overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+      color: #c9d1d9; max-height: 200px;
+    }
+
+    /* LIVE FEED */
+    #live-feed {
+      height: 320px; overflow-y: auto;
+      background: #0d1117; border: 1px solid var(--border);
+      border-radius: 10px; padding: 1rem;
+      font-family: var(--mono); font-size: .78rem;
+    }
+    .feed-line { padding: .2rem 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .feed-line.ERROR   { color: #f87171; }
+    .feed-line.WARNING { color: #fbbf24; }
+    .feed-line.INFO    { color: #c9d1d9; }
+    .feed-line.HOTFIX  { color: #c084fc; font-weight: 600; }
+
+    /* APPROVAL MODAL */
+    #modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.7); z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.75rem; max-width: 680px; width: 95%;
+      max-height: 90vh; overflow-y: auto;
+    }
+    #modal h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
+    #modal .field { margin-bottom: .75rem; }
+    #modal .field label { display: block; font-size: .75rem; color: var(--muted); margin-bottom: .25rem; }
+    #modal input[type=text] {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px; padding: .45rem .75rem;
+      font-size: .85rem; font-family: inherit; width: 100%;
+    }
+    .modal-actions { display: flex; gap: .75rem; margin-top: 1.25rem; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>HellenCommerce <span>2.0</span> &mdash; Admin Dashboard</h1>
+  <div id="status-badge">
+    <div id="status-dot"></div>
+    <span id="status-text">Desconectado</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- STATS -->
+  <div class="stats" id="stats-grid">
+    <div class="stat-card info"><div class="label">Total Logs</div><div class="value" id="s-total">—</div></div>
+    <div class="stat-card danger"><div class="label">Errores</div><div class="value" id="s-errors">—</div></div>
+    <div class="stat-card warn"><div class="label">Warnings</div><div class="value" id="s-warnings">—</div></div>
+    <div class="stat-card warn"><div class="label">HotFix Pendientes</div><div class="value" id="s-pending">—</div></div>
+    <div class="stat-card ok"><div class="label">HotFix Aprobados</div><div class="value" id="s-approved">—</div></div>
+    <div class="stat-card ok"><div class="label">HotFix Aplicados</div><div class="value" id="s-applied">—</div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('live')">Feed en Vivo</div>
+    <div class="tab" onclick="switchTab('logs')">Logs</div>
+    <div class="tab" onclick="switchTab('hotfixes')">Hot-Fixes</div>
+  </div>
+
+  <!-- LIVE PANEL -->
+  <div class="panel active" id="panel-live">
+    <div id="live-feed"><span style="color:var(--muted)">Esperando eventos...</span></div>
+  </div>
+
+  <!-- LOGS PANEL -->
+  <div class="panel" id="panel-logs">
+    <div class="filters">
+      <select id="f-service">
+        <option value="">Todos los servicios</option>
+        <option>fastapi_service</option>
+        <option>intent_service</option><option>worker_service</option>
+        <option>mistral_service</option><option>venta_service</option>
+        <option>compra_service</option><option>ruta_service</option>
+        <option>informativa_service</option><option>contacto_service</option>
+        <option>notificacion_service</option><option>transporte_service</option>
+        <option>mensajeria_service</option><option>negocio_service</option>
+        <option>servicio_service</option><option>registro_service</option>
+      </select>
+      <select id="f-level">
+        <option value="">Todos los niveles</option>
+        <option>ERROR</option><option>WARNING</option><option>INFO</option>
+      </select>
+      <input type="number" id="f-limit" value="100" min="10" max="1000" style="width:80px">
+      <button class="btn btn-primary" onclick="loadLogs()">Filtrar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Timestamp</th><th>Nivel</th><th>Servicio</th>
+            <th>Archivo / Línea</th><th>Descripción</th>
+          </tr>
+        </thead>
+        <tbody id="logs-body"><tr><td colspan="6" style="color:var(--muted);text-align:center">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- HOTFIXES PANEL -->
+  <div class="panel" id="panel-hotfixes">
+    <div class="filters">
+      <select id="hf-status">
+        <option value="">Todos</option>
+        <option>PENDIENTE</option><option>APROBADO</option><option>RECHAZADO</option><option>APLICADO</option>
+      </select>
+      <button class="btn btn-primary" onclick="loadHotfixes()">Filtrar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Servicio</th><th>Archivo / Línea</th>
+            <th>Error</th><th>Código Propuesto</th><th>Estado</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="hf-body"><tr><td colspan="7" style="color:var(--muted);text-align:center">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- APPROVAL MODAL -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h2 id="modal-title">Aprobar Hot-Fix</h2>
+    <div class="field">
+      <label>Error original</label>
+      <p id="modal-error" style="font-size:.82rem;color:var(--muted)"></p>
+    </div>
+    <div class="field">
+      <label>Código propuesto por IA</label>
+      <pre id="modal-code"></pre>
+    </div>
+    <div class="field">
+      <label>Tu nombre / ID de administrador</label>
+      <input type="text" id="modal-admin" placeholder="ej. admin@hellen.cu">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" style="background:var(--surface2)" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger"   onclick="submitDecision('reject')">Rechazar</button>
+      <button class="btn btn-success"  onclick="submitDecision('approve')">Aprobar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const LOGGING_WS = `ws://${location.hostname}:8099/ws/admin`;
+  let ws, currentHotfixId;
+
+  /* ---- WebSocket ---- */
+  function connectWS() {
+    ws = new WebSocket(LOGGING_WS);
+    ws.onopen  = () => { dot(true); statusText('En vivo'); };
+    ws.onclose = () => { dot(false); statusText('Reconectando...'); setTimeout(connectWS, 3000); };
+    ws.onerror = () => ws.close();
+    ws.onmessage = ({ data }) => {
+      const msg = JSON.parse(data);
+      if (msg.type === 'PING') return;
+      appendFeed(msg);
+      if (msg.type === 'HOTFIX_PENDING') showHotfixAlert(msg);
+      refreshStats();
+    };
+  }
+  function dot(live) {
+    document.getElementById('status-dot').className = live ? 'live' : '';
+  }
+  function statusText(t) { document.getElementById('status-text').textContent = t; }
+
+  /* ---- Live Feed ---- */
+  function appendFeed(msg) {
+    const feed = document.getElementById('live-feed');
+    const cls  = msg.type === 'HOTFIX_PENDING' ? 'HOTFIX' : (msg.log_level || 'INFO');
+    const time = (msg.timestamp || new Date().toISOString()).slice(11, 19);
+    const line = document.createElement('div');
+    line.className = `feed-line ${cls}`;
+    if (msg.type === 'HOTFIX_PENDING') {
+      line.textContent = `[${time}] ⚡ HOTFIX PENDIENTE — ${msg.service_origin} : ${msg.source_file}:${msg.line_number}`;
+    } else {
+      line.textContent = `[${time}] ${msg.log_level || 'EVENT'} | ${msg.service_origin || ''} | ${msg.error_description || msg.code_snippet || ''}`;
+    }
+    if (feed.firstChild && feed.firstChild.textContent.startsWith('Esperando')) feed.innerHTML = '';
+    feed.prepend(line);
+    if (feed.children.length > 200) feed.removeChild(feed.lastChild);
+  }
+
+  /* ---- Stats ---- */
+  async function refreshStats() {
+    const r = await fetch('/api/stats');
+    const s = await r.json();
+    document.getElementById('s-total').textContent    = s.total_logs    ?? '—';
+    document.getElementById('s-errors').textContent   = s.errors        ?? '—';
+    document.getElementById('s-warnings').textContent = s.warnings      ?? '—';
+    document.getElementById('s-pending').textContent  = s.hotfixes_pending  ?? '—';
+    document.getElementById('s-approved').textContent = s.hotfixes_approved ?? '—';
+    document.getElementById('s-applied').textContent  = s.hotfixes_applied  ?? '—';
+  }
+
+  /* ---- Tabs ---- */
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['live','logs','hotfixes'][i] === name));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`panel-${name}`).classList.add('active');
+    if (name === 'logs')     loadLogs();
+    if (name === 'hotfixes') loadHotfixes();
+  }
+
+  /* ---- Logs ---- */
+  async function loadLogs() {
+    const service = document.getElementById('f-service').value;
+    const level   = document.getElementById('f-level').value;
+    const limit   = document.getElementById('f-limit').value;
+    let url = `/api/logs?limit=${limit}`;
+    if (service) url += `&service=${service}`;
+    if (level)   url += `&level=${level}`;
+    const rows = await (await fetch(url)).json();
+    const tbody = document.getElementById('logs-body');
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center">Sin resultados</td></tr>'; return; }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.id}</td>
+        <td style="white-space:nowrap">${(r.timestamp||'').slice(0,19)}</td>
+        <td><span class="badge badge-${(r.log_level||'info').toLowerCase()}">${r.log_level}</span></td>
+        <td>${r.service_origin}</td>
+        <td style="font-family:var(--mono);font-size:.75rem">${r.source_file}:${r.line_number}</td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${r.error_description || r.code_snippet || ''}</td>
+      </tr>`).join('');
+  }
+
+  /* ---- Hot-Fixes ---- */
+  async function loadHotfixes() {
+    const status = document.getElementById('hf-status').value;
+    let url = '/api/hotfixes';
+    if (status) url += `?status=${status}`;
+    const rows = await (await fetch(url)).json();
+    const tbody = document.getElementById('hf-body');
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center">Sin resultados</td></tr>'; return; }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.id}</td>
+        <td>${r.service_origin}</td>
+        <td style="font-family:var(--mono);font-size:.75rem">${r.source_file}:${r.line_number}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.error_description||''}</td>
+        <td><pre style="max-height:80px;font-size:.72rem">${(r.proposed_code||'').slice(0,200)}</pre></td>
+        <td><span class="badge badge-${(r.status||'').toLowerCase()}">${r.status}</span></td>
+        <td>
+          ${r.status === 'PENDIENTE' ? `
+            <button class="btn btn-success" style="font-size:.75rem;padding:.25rem .6rem" onclick="openModal(${r.id},'${escHtml(r.error_description)}','${escHtml(r.proposed_code)}')">Revisar</button>
+          ` : '—'}
+        </td>
+      </tr>`).join('');
+  }
+
+  /* ---- Modal ---- */
+  function openModal(id, err, code) {
+    currentHotfixId = id;
+    document.getElementById('modal-title').textContent = `Revisar Hot-Fix #${id}`;
+    document.getElementById('modal-error').textContent = err || '—';
+    document.getElementById('modal-code').textContent  = code || '—';
+    document.getElementById('modal-admin').value = '';
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+  function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+  async function submitDecision(action) {
+    const admin = document.getElementById('modal-admin').value.trim();
+    if (!admin) { alert('Indica tu nombre de administrador'); return; }
+    await fetch(`/api/hotfixes/${currentHotfixId}/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approved_by: admin })
+    });
+    closeModal();
+    loadHotfixes();
+    refreshStats();
+  }
+
+  function showHotfixAlert(msg) {
+    if (Notification.permission === 'granted') {
+      new Notification(`⚡ Hot-Fix Pendiente — ${msg.service_origin}`, {
+        body: msg.error_description
+      });
+    }
+  }
+
+  function escHtml(s) { return (s||'').replace(/'/g,"\\'").replace(/\n/g,'\\n'); }
+
+  /* ---- Init ---- */
+  connectWS();
+  refreshStats();
+  setInterval(refreshStats, 15000);
+  if (Notification.permission === 'default') Notification.requestPermission();
+</script>
+</body>
+</html>

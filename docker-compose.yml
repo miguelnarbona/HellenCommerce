@@ -1,0 +1,414 @@
+version: '3.8'
+
+services:
+  # ============================================================
+  # FASTAPI INGRESS - Punto de entrada único
+  # ============================================================
+  fastapi_service:
+    build:
+      context: .
+      dockerfile: fastapi_service/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - SQLITE_PATH=/app/data/app.db
+      - PROMPTS_PATH=/app/prompts
+      - RESOURCES_PATH=/app/resources
+      - INTENT_SERVICE_URL=http://intent_service:8002
+      - WORKER_SERVICE_URL=http://worker_service:8003
+      - MISTRAL_SERVICE_URL=http://mistral_service:8004
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
+      - CLAUDE_WEBHOOK_URL=${CLAUDE_WEBHOOK_URL:-}
+    volumes:
+      - ./app/data:/app/data
+      - ./app/prompts:/app/prompts
+      - ./app/resources:/app/resources
+    depends_on:
+      - intent_service
+      - worker_service
+      - mistral_service
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  # ============================================================
+  # INTENT SERVICE - Detección de intenciones
+  # ============================================================
+  intent_service:
+    build:
+      context: .
+      dockerfile: intent_service/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - INTENT_MODEL_PATH=/app/models/intent_model.gguf
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/resources:/app/resources:ro
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  # ============================================================
+  # WORKER SERVICE - Generador de prompts
+  # ============================================================
+  worker_service:
+    build:
+      context: .
+      dockerfile: worker_service/Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - SQLITE_PATH=/app/data/app.db
+      - PROMPTS_PATH=/app/prompts
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/data:/app/data
+      - ./app/prompts:/app/prompts:ro
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  # ============================================================
+  # MISTRAL SERVICE - Unificador de respuestas
+  # ============================================================
+  mistral_service:
+    build:
+      context: .
+      dockerfile: mistral_service/Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - MISTRAL_MODEL_PATH=/app/models/mistral.gguf
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  # ============================================================
+  # LOGGING SERVICE - Subsistema de Logs y Self-Healing
+  # ============================================================
+  logging_service:
+    build:
+      context: .
+      dockerfile: logging_service/Dockerfile
+    ports:
+      - "8099:8099"
+    environment:
+      - LOGS_DB_PATH=/app/logs/hellen_logs.db
+      - EXTERNAL_LLM_URL=${EXTERNAL_LLM_URL:-https://api.anthropic.com/v1/messages}
+      - EXTERNAL_LLM_KEY=${EXTERNAL_LLM_KEY:-}
+      - EXTERNAL_LLM_MODEL=${EXTERNAL_LLM_MODEL:-claude-3-5-sonnet-20241022}
+      - ADMIN_NOTIFY_WEBHOOK=${ADMIN_NOTIFY_WEBHOOK:-}
+    volumes:
+      - ./app/logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  # ============================================================
+  # ADMIN DASHBOARD - Panel de administración
+  # ============================================================
+  admin_dashboard:
+    build:
+      context: ./admin_dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - LOGGING_API_URL=http://logging_service:8099
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  # ============================================================
+  # SERVICIOS ESPECIALIZADOS POR CATEGORÍA
+  # ============================================================
+  
+  registro_service:
+    build:
+      context: .
+      dockerfile: services/registro_service/Dockerfile
+    ports:
+      - "8010:8010"
+    environment:
+      - REGISTRO_MODEL_PATH=/app/models/registro_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  contacto_service:
+    build:
+      context: .
+      dockerfile: services/contacto_service/Dockerfile
+    ports:
+      - "8011:8011"
+    environment:
+      - CONTACTO_MODEL_PATH=/app/models/contacto_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  mensajeria_service:
+    build:
+      context: .
+      dockerfile: services/mensajeria_service/Dockerfile
+    ports:
+      - "8012:8012"
+    environment:
+      - MENSAJERIA_MODEL_PATH=/app/models/mensajeria_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  venta_service:
+    build:
+      context: .
+      dockerfile: services/venta_service/Dockerfile
+    ports:
+      - "8013:8013"
+    environment:
+      - VENTA_MODEL_PATH=/app/models/venta_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  compra_service:
+    build:
+      context: .
+      dockerfile: services/compra_service/Dockerfile
+    ports:
+      - "8014:8014"
+    environment:
+      - COMPRA_MODEL_PATH=/app/models/compra_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  informativa_service:
+    build:
+      context: .
+      dockerfile: services/informativa_service/Dockerfile
+    ports:
+      - "8015:8015"
+    environment:
+      - INFORMATIVA_MODEL_PATH=/app/models/informativa_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  notificacion_service:
+    build:
+      context: .
+      dockerfile: services/notificacion_service/Dockerfile
+    ports:
+      - "8016:8016"
+    environment:
+      - NOTIFICACION_MODEL_PATH=/app/models/notificacion_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  transporte_service:
+    build:
+      context: .
+      dockerfile: services/transporte_service/Dockerfile
+    ports:
+      - "8017:8017"
+    environment:
+      - TRANSPORTE_MODEL_PATH=/app/models/transporte_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  saludo_service:
+    build:
+      context: .
+      dockerfile: services/saludo_service/Dockerfile
+    ports:
+      - "8018:8018"
+    environment:
+      - SALUDO_MODEL_PATH=/app/models/saludo_model.gguf
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  despedida_service:
+    build:
+      context: .
+      dockerfile: services/despedida_service/Dockerfile
+    ports:
+      - "8019:8019"
+    environment:
+      - DESPEDIDA_MODEL_PATH=/app/models/despedida_model.gguf
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  ruta_service:
+    build:
+      context: .
+      dockerfile: services/ruta_service/Dockerfile
+    ports:
+      - "8020:8020"
+    environment:
+      - RUTA_MODEL_PATH=/app/models/ruta_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  negocio_service:
+    build:
+      context: .
+      dockerfile: services/negocio_service/Dockerfile
+    ports:
+      - "8021:8021"
+    environment:
+      - NEGOCIO_MODEL_PATH=/app/models/negocio_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  servicio_service:
+    build:
+      context: .
+      dockerfile: services/servicio_service/Dockerfile
+    ports:
+      - "8022:8022"
+    environment:
+      - SERVICIO_MODEL_PATH=/app/models/servicio_model.gguf
+      - SQLITE_PATH=/app/data/app.db
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+      - ./app/data:/app/data
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+  otra_service:
+    build:
+      context: .
+      dockerfile: services/otra_service/Dockerfile
+    ports:
+      - "8023:8023"
+    environment:
+      - OTRA_MODEL_PATH=/app/models/otra_model.gguf
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ./app/models:/app/models:ro
+    depends_on:
+      - logging_service
+    restart: unless-stopped
+    networks:
+      - hellen_network
+
+# ============================================================
+# REDES
+# ============================================================
+networks:
+  hellen_network:
+    driver: bridge
+
+# ============================================================
+# VOLÚMENES
+# ============================================================
+volumes:
+  app_data:
+  app_models:
+  app_logs:

@@ -1,0 +1,21 @@
+﻿version: '3.8'
+
+services:
+  negocio_service:
+    build:
+      context: ..
+      dockerfile: negocio_service/Dockerfile
+    ports:
+      - "8021:8021"
+    environment:
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ../app:/app/shared
+      - .:/app/negocio_service
+    depends_on:
+      - logging_service
+
+networks:
+  default:
+    name: hellen_network
+    external: true

@@ -1,0 +1,21 @@
+﻿version: '3.8'
+
+services:
+  ruta_service:
+    build:
+      context: ..
+      dockerfile: ruta_service/Dockerfile
+    ports:
+      - "8020:8020"
+    environment:
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ../app:/app/shared
+      - .:/app/ruta_service
+    depends_on:
+      - logging_service
+
+networks:
+  default:
+    name: hellen_network
+    external: true

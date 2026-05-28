@@ -1,0 +1,21 @@
+﻿version: '3.8'
+
+services:
+  informativa_service:
+    build:
+      context: ..
+      dockerfile: informativa_service/Dockerfile
+    ports:
+      - "8015:8015"
+    environment:
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ../app:/app/shared
+      - .:/app/informativa_service
+    depends_on:
+      - logging_service
+
+networks:
+  default:
+    name: hellen_network
+    external: true

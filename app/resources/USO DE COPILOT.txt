@@ -1,0 +1,57 @@
+USO DE COPILOT:
+
+Debuggear un fichero 
+- copilot-debug python main.py
+
+Debuggear un Proyecto
+- copilot-debug Debug All Service
+- copilot-debug Debug All Service run
+
+Mientras la app corre, abre Copilot Chat
+Pregúntale cualquier cosa sobre:
+- el error actual
+- el estado de las variables
+- el call stack
+- el módulo que está fallando
+Copilot analizará el estado del debugger en tiempo real.
+
+Aplica fixes sin detener la app
+Puedes usar:
+- /fix
+- “Fix this #selection”
+- “Generate Code > Fix”
+
+En el ultimo cambio sugerido me comentaste 
+
+# Si el mensaje es de seguimiento y no trae una intención clara,
+# reutilizamos la última intención principal de la conversación.              
+
+REGLAS:
+
+- Necesito que cuando hagas sugerencias de agregar codigo nuevo cada cometario hecho por ti le pongas delante la etiqueta COPILOT-add:   
+  dejando cada comentario de la siguiente manera:     
+
+  # COPILOT-add: 
+  # Si el mensaje es de seguimiento y no trae una intención clara,
+  # reutilizamos la última intención principal de la conversación. 
+
+  Asi cuando acepto los fixes nuevos ya se cuales son los adicionados.
+
+- Cuando modifiques lineas en el codigo, es necesario que comentes los cambios en el codigo de manera clara con la etiqueta COPILOT-Change:
+  ej:  
+  # -----------------------------------------------------
+  # 2. Obtener último estado SOLO de esta conversación
+  # -----------------------------------------------------
+  ultimo_estado = None
+  contexto_actual = []
+  
+  # COPILOT-Change:
+  # -----------------------------------------------------
+  # 2. Obtener último estado SOLO de esta conversación
+  # El valor de inicializacion de la variable ultimo_estado 
+  # cambio de None a "ULTIMO_ESTADO_CAPTADO"
+  # -----------------------------------------------------
+  ultimo_estado = "ULTIMO_ESTADO_CAPTADO"
+  contexto_actual = []
+
+Te quedaron claras las nuevas reglas para cambios del codigo?

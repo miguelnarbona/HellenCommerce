@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  map_service:
+    build:
+      context: ./map_service
+    image: hellen-map
+    container_name: map_service
+    ports:
+      - "5005:5000"
+    command: uvicorn main:app --host 0.0.0.0 --port 5000
+    networks:
+      - hellen_net
+
+networks:
+  hellen_net:
+    external: true

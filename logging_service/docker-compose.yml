@@ -1,0 +1,22 @@
+﻿version: '3.8'
+
+services:
+  logging_service:
+    build:
+      context: ..
+      dockerfile: logging_service/Dockerfile
+    ports:
+      - "8099:8099"
+    environment:
+      - EXTERNAL_LLM_URL=https://api.anthropic.com/v1/messages
+      - EXTERNAL_LLM_KEY=
+      - LOGS_DB_PATH=/app/logs/hellen_logs.db
+    volumes:
+      - ../app:/app/shared
+      - .:/app/logging_service
+
+
+networks:
+  default:
+    name: hellen_network
+    external: true

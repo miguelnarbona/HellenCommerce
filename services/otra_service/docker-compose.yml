@@ -1,0 +1,21 @@
+﻿version: '3.8'
+
+services:
+  otra_service:
+    build:
+      context: ..
+      dockerfile: otra_service/Dockerfile
+    ports:
+      - "8023:8023"
+    environment:
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+    volumes:
+      - ../app:/app/shared
+      - .:/app/otra_service
+    depends_on:
+      - logging_service
+
+networks:
+  default:
+    name: hellen_network
+    external: true

@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  chromadb_service:
+    image: chromadb/chroma:0.5.3
+    container_name: chromadb_service
+    ports:
+      - "8001:8000"
+    volumes:
+      - /mnt/c/HellenData/chroma_store:/data
+    restart: always
+    networks:
+      - hellen_net
+
+networks:
+  hellen_net:
+    external: true
+
