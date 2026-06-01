@@ -25,6 +25,8 @@ from intent_service.intent_semantic import detectar_intencion_semantica
 # ============================================================
 system = platform.system()
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
+BASE_RES = f"c:/HellenCommerce/app/resources" if system == "Windows" else "/app/shared/resources"
+MODEL_PATH_ULT = f"c:/HellenData/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf" if system == "Windows" else "/app/models/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf"
 
 KEYWORDS_FILES = {
     "COMPRA": "keywords_buy.txt",
@@ -35,8 +37,6 @@ KEYWORDS_FILES = {
     "INFORMATIVA": "keywords_info.txt",
     "OTRA": "keywords_other.txt"
 }
-
-BASE_RES = "c:/HellenCommerce/app/resources" if system == "Windows" else "/app/shared/resources"
 
 class InputText(BaseModel):
     message: str
@@ -119,11 +119,6 @@ async def lifespan(app: FastAPI):
     global intent_llm
     
     await log_to_logging_service("INFO", "Bootstrapping intent_service: Iniciando carga de modelo GGUF", line_num=103)
-
-    if system == "Windows":
-        MODEL_PATH_ULT = os.getenv("MODEL_PATH_ULT", "c:/HellenData/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
-    else:
-        MODEL_PATH_ULT = os.getenv("MODEL_PATH_ULT", "/app/intent_service/models/intent_model.gguf")
 
     try:
         intent_llm = Llama(

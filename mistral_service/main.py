@@ -18,9 +18,11 @@ from llama_cpp import Llama
 class SynthesisRequest(BaseModel):
     partials: list[dict]
     
-# Referencia global al modelo de propósito general
+# CONFIGURACIONES
 mistral_model = None
+system = platform.system()    
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
+MODEL_PATH = f"c:/HellenData/Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf" if system == "Windows" else "/app/models/qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf"
 
 # ============================================================
 # LOGGING AL LOGGING_SERVICE
@@ -50,20 +52,11 @@ async def lifespan(app: FastAPI):
     system = platform.system()
     
     await log_to_logging_service("INFO", "Iniciando Mistral Service para consolidar multi-intenciones", line_num=47)
-    
-    if system == "Windows":
-        model_path = os.getenv("MISTRAL_MODEL_PATH", "c:/HellenData/Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf")
-        # model_path = os.getenv("MISTRAL_MODEL_PATH", "c:/HellenData/mistral/phi-2-instruct.Q4_K_S/phi-2-instruct.Q4_K_S.gguf")
-        # model_path = os.getenv("MISTRAL_MODEL_PATH", "c:/HellenData/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
-    else:
-        model_path = os.getenv("MISTRAL_MODEL_PATH", "/app/models/qwen2.5-3b-instruct-q4_k_m.gguf")
-        # model_path = os.getenv("MISTRAL_MODEL_PATH", "/app/models/phi-2-instruct.Q4_K_S.gguf")
-        # model_path = os.getenv("MISTRAL_MODEL_PATH", "/app/models/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
 
-    print(f"Cargando modelo de propósito general Mistral desde: {model_path}")
+    print(f"Cargando modelo de propósito general Mistral desde: {MODEL_PATH}")
     try:
         mistral_model = Llama(
-            model_path=model_path,
+            model_path=MODEL_PATH,
             n_ctx=4096,
             n_threads=4,
             n_batch=256,

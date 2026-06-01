@@ -21,6 +21,7 @@ import sys
 import re
 import unicodedata
 import httpx
+import platform
 import websockets
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
@@ -73,13 +74,15 @@ class Orchestrator:
     ):
         self.context_manager = context_manager
         self.get_db = get_db_func
-        self.base_prompts_path = base_prompts_path or "c:/HellenCommerce/app/prompts"
-        self.base_resources_path = base_resources_path or "c:/HellenCommerce/app/resources"
+
+        system = platform.system()    
+        self.base_prompts_path = base_prompts_path or f"c:/HellenCommerce/app/prompts" if system == "Windows" else "app/prompts"
+        self.base_resources_path = base_resources_path or f"c:/HellenCommerce/app/resources" if system == "Windows" else "app/resources"
         
         # URLs de microservicios (configurables vía environment)
-        self.intent_service_url = os.getenv("INTENT_SERVICE_URL", "http://intent_service:8002")
-        self.worker_service_url = os.getenv("WORKER_SERVICE_URL", "http://worker_service:8003")
-        self.mistral_service_url = os.getenv("MISTRAL_SERVICE_URL", "http://mistral_service:8004")
+        self.intent_service_url = os.getenv("INTENT_SERVICE_URL", "http://intent_service:9010")
+        self.worker_service_url = os.getenv("WORKER_SERVICE_URL", "http://worker_service:9000")
+        self.mistral_service_url = os.getenv("MISTRAL_SERVICE_URL", "http://mistral_service:9001")
         self.logging_ws_url = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
         
         # URLs de servicios especializados (fan-out)
@@ -202,9 +205,11 @@ class Orchestrator:
             if self.context_manager:
                 asyncio.create_task(self._persist_context(ctx))
             
-            # 7. Pipeline n8n/Claude (modo desarrollo - asíncrono)
-            asyncio.create_task(self._trigger_external_pipeline(ctx))
+            ##################################################################################################
+            # 7. ############# (AUN MODO REVISION-ITEGRACION) Pipeline n8n/Claude (modo desarrollo - asíncrono)
+            # syncio.create_task(self._trigger_external_pipeline(ctx))
             
+            # 8. Respuesta integrada del modelo
             return {"response": ctx.final_response}
             
         except Exception as e:

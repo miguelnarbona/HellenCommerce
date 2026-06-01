@@ -26,9 +26,6 @@ import socket
 # Add root directory to path to enable imports from 'app' package
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Set the correct SQLite database path
-os.environ["SQLITE_PATH"] = os.getenv("SQLITE_PATH", "c:/HellenData/sqlite_store/hellencommerce.db")
-
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -54,6 +51,12 @@ UPPER_LIMIT = 50000
 CHECK_INTERVAL = 5
 CRITICAL_STATES = {"CLOSE_WAIT", "TIME_WAIT", "FIN_WAIT1", "FIN_WAIT2"}
 BACKEND_PIDS = {os.getpid()}
+
+system = platform.system()    
+BASE_RES = f"c:/HellenCommerce/app/resources" if system == "Windows" else "app/resources"
+BASE_PRT = f"c:/HellenCommerce/app/prompts" if system == "Windows" else "app/prompts"
+HF_API_KEY = os.getenv("HF_API_KEY", "")
+SQLITE_PATH =  f"c:/HellenData/sqlite_store/hellencommerce.db" if system == "Windows" else "HellenData/sqlite_store/hellencommerce.db"
 
 # Variables globales
 context_manager = None
@@ -92,7 +95,7 @@ class CommStatusUpdate(BaseModel):
 # ============================================================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global context_manager, orchestrator_instance
+    global context_manager, orchestrator_instance    
     
     try:
         # Inicializar SQLiteAdapter
@@ -126,8 +129,8 @@ async def lifespan(app: FastAPI):
         orchestrator_instance = Orchestrator(
             context_manager=context_manager,
             get_db_func=get_db,
-            base_prompts_path=os.getenv("PROMPTS_PATH", "c:/HellenCommerce/app/prompts"),
-            base_resources_path=os.getenv("RESOURCES_PATH", "c:/HellenCommerce/app/resources")
+            base_prompts_path=BASE_PRT,
+            base_resources_path=BASE_RES
         )
         print("✅ Orchestrator inicializado como librería interna", flush=True)
     except Exception as e:
@@ -189,7 +192,7 @@ async def socket_maintenance():
 # ============================================================
 def get_db():
     """Obtiene conexión a SQLite."""
-    conn = sqlite3.connect(os.getenv("SQLITE_PATH", "c:/HellenData/sqlite_store/hellencommerce.db"), check_same_thread=False)
+    conn = sqlite3.connect(SQLITE_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 

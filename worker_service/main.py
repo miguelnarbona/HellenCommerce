@@ -12,13 +12,13 @@ if sys.platform.startswith("win"):
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-
-# Importamos las dependencias compartidas (simuladas aquí, deben estar en /app/ en el contenedor)
-sys.path.append("c:/HellenCommerce")
 from app.builder.AppBuilder import AppBuilder
 
-# LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
-LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://127.0.0.1:8099/ws/logs")
+# Importamos las dependencias compartidas (simuladas aquí, deben estar en /app/ en el contenedor)
+system = platform.system()   
+sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/hellencommerce")
+LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
+
 worker_model = None
 builder = None
 director = None
