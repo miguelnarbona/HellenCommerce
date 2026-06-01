@@ -10,11 +10,10 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     strategy:
       fail-fast: false
       matrix:
@@ -30,9 +29,8 @@ jobs:
             context: ./map_service
           - name: mistral_service
             context: ./mistral_service
-            
-          # 💡 SOLUCIÓN DEFINITIVA PARA WORKER: 
-          # Toma la raíz como contexto y lee directamente el Dockerfile interno sin trucos raros
+          
+          # 💡 SOLUCIÓN DEFINITIVA PARA WORKER
           - name: worker_service
             context: .
             file: ./worker_service/Dockerfile
@@ -68,9 +66,25 @@ jobs:
             context: ./services/venta_service
 
     steps:
+      # PASO 1: Maximizar el espacio en disco eliminando software innecesario de GitHub
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false # Deja esto en false para no romper buildx
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2. Configurar emulador QEMU (Esencial para compilar ARM64 desde servidores AMD de GitHub)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 3. Configurar Docker Buildx para habilitar compilación avanzada
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -85,16 +99,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 4. Compilar usando Matrix para múltiples arquitecturas simultáneamente
       - name: Build and push service
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
-          # 💡 Si la matriz define un 'file' específico lo usa; si no, busca el por defecto en el contexto
           file: ${{ matrix.file }}
           push: true
-          no-cache: true # <--- Fuerza a Docker a ignorar la caché vieja y compilar limpio
+          # Habilita la compatibilidad híbrida para tu entorno local (amd64) y tu Oracle Ampere (arm64)
+          platforms: linux/amd64,linux/arm64
+          # Corrige de manera definitiva el bug visual de la columna "OS/Arch" en GitHub
+          provenance: false
           tags: |
             ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.name }}:latest
             ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  auto-deploy:
+    needs: build-and-push # Espera obligatoriamente a que terminen de compilar con éxito las imágenes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notificar y desplegar en Oracle Cloud
+        continue-on-error: true
+        run: |
+          curl -X POST http://${{ secrets.ORACLE_SERVER_IP }}:10001/hooks/deploy-hellen-commerce
