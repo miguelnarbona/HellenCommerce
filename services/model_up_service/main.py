@@ -15,6 +15,11 @@ except Exception:
 # Simple model cache to avoid reloading models repeatedly
 MODEL_CACHE: Dict[str, Any] = {}
 MODEL_LOCK = asyncio.Lock()
+import concurrent.futures
+
+# Creamos un ejecutor de un solo hilo. Esto actúa como una cola (queue) natural
+# para procesar miles de peticiones secuencialmente sin colapsar RAM o CPU al 100%.
+INFERENCE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
 
 class InferRequest(BaseModel):
@@ -64,9 +69,10 @@ async def infer(req: InferRequest):
 
     try:
         loop = asyncio.get_event_loop()
-        # Run inference in executor to avoid blocking
+        # Run inference in executor to avoid blocking. 
+        # Using INFERENCE_EXECUTOR limits processing to 1 concurrent task (Queue system).
         result = await loop.run_in_executor(
-            None,
+            INFERENCE_EXECUTOR,
             lambda: model(prompt=req.prompt, max_tokens=req.max_tokens, temperature=req.temperature)
         )
         return {"result": result}

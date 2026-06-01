@@ -14,6 +14,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from llama_cpp import Llama
+import concurrent.futures
+
+INFERENCE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
 class SynthesisRequest(BaseModel):
     partials: list[dict]
@@ -103,11 +106,15 @@ async def synthesize_responses(req: SynthesisRequest):
     
     if mistral_model:
         try:
-            result = mistral_model(
-                prompt=prompt_mistral,
-                max_tokens=512,
-                temperature=0.3,
-                top_p=0.9
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                INFERENCE_EXECUTOR,
+                lambda: mistral_model(
+                    prompt=prompt_mistral,
+                    max_tokens=512,
+                    temperature=0.3,
+                    top_p=0.9
+                )
             )
 
             final_response = result["choices"][0]["text"].strip()
@@ -136,16 +143,20 @@ async def infer_direct(req: dict):
             
     if mistral_model:
         try:
-            result = mistral_model(
-                prompt=prompt,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                top_k=top_k,
-                repeat_penalty=repeat_penalty,
-                presence_penalty=presence_penalty,
-                echo=echo,
-                stream=stream
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                INFERENCE_EXECUTOR,
+                lambda: mistral_model(
+                    prompt=prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    top_k=top_k,
+                    repeat_penalty=repeat_penalty,
+                    presence_penalty=presence_penalty,
+                    echo=echo,
+                    stream=stream
+                )
             )
 
             return {"response": result["choices"][0]["text"].strip()}
