@@ -129,7 +129,8 @@ async def lifespan(app: FastAPI):
             n_threads=4,
             n_batch=256,
             use_mmap=True,
-            use_mlock=False
+            use_mlock=False,
+            verbose=True
         )
         await log_to_logging_service("INFO", f"Modelo GGUF cargado exitosamente desde {MODEL_PATH_ULT}", line_num=118)
     except Exception as e:
@@ -189,7 +190,14 @@ async def infer_intencion(input: InputText):
     if intent_llm:
         async with modelo_lock:
             try:
-                result = intent_llm(prompt=prompt_mistral, max_tokens=32, temperature=0.0, top_p=1.0, top_k=1)
+                result = intent_llm(
+                    prompt=prompt_mistral, 
+                    max_tokens=32, 
+                    temperature=0.0, 
+                    top_p=1.0, 
+                    top_k=1
+                    )
+                
                 raw_model_output = result["choices"][0]["text"].strip().upper()
                 modelo_tokens = re.findall(r"[A-Z]+", raw_model_output)
                 valid_options = {"COMPRA","VENTA","SERVICIO","MENSAJERIA","TRANSPORTE","INFORMATIVA","NEGOCIO","NOTIFICACION","SALUDOS","CONTACTO","RUTA","OTRA"}

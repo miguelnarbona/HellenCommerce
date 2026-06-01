@@ -32,7 +32,7 @@ sys.path.append("c:/HellenCommerce")
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
 ruta_model = None
 builder = None
-MODEL_UP_URL = os.getenv("MODEL_UP_URL", "http://model_up_service:8030/infer")
+MODEL_UP_URL = os.getenv("MODEL_UP_URL", "http://model_up_service:8040/infer")
 MODEL_PATH = data_path("mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
 
 class ProcessRequest(BaseModel):

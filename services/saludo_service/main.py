@@ -21,7 +21,7 @@ sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append
 from app.utils.paths import data_path
 
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
-MODEL_UP_URL = os.getenv("MODEL_UP_URL", "http://model_up_service:8030/infer")
+MODEL_UP_URL = os.getenv("MODEL_UP_URL", "http://model_up_service:8040/infer")
 saludo_model = None
 
 class ProcessRequest(BaseModel):

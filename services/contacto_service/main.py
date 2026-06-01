@@ -22,7 +22,7 @@ from app.builder.AppBuilder import AppBuilder
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
 contacto_model = None
 builder = None
-MODEL_UP_URL = os.getenv("MODEL_UP_URL", "http://model_up_service:8030/infer")
+MODEL_UP_URL = os.getenv("MODEL_UP_URL", "http://model_up_service:8040/infer")
 
 class ProcessRequest(BaseModel):
     user_id: str

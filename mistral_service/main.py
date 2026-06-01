@@ -64,7 +64,10 @@ async def lifespan(app: FastAPI):
             n_threads=4,
             n_batch=256,
             use_mmap=True,
-            use_mlock=False
+            use_mlock=False,
+            chat_format=None,
+            rope_freq_scale=1.0,
+            verbose=True
         )
         await log_to_logging_service("INFO", f"Modelo Mistral GGUF cargado exitosamente", line_num=64)
     except Exception as e:
@@ -106,6 +109,7 @@ async def synthesize_responses(req: SynthesisRequest):
                 temperature=0.3,
                 top_p=0.9
             )
+
             final_response = result["choices"][0]["text"].strip()
             return {"response": final_response}
         except Exception as e:
@@ -122,14 +126,28 @@ async def infer_direct(req: dict):
     prompt = req.get("prompt", "")
     max_tokens = req.get("max_tokens", 384)
     temperature = req.get("temperature", 0.3)
-    
+    top_p=req.get("top_p", 0.9)
+    top_k=req.get("top_k", 40)
+    repeat_penalty=req.get("repeat_penalty", 1.1)
+    presence_penalty=req.get("presence_penalty", 0.0)
+    # stop=req.get("stop", stop)
+    echo=req.get("echo", False)
+    stream=req.get("stream", False)   # 🚀 generación rápida
+            
     if mistral_model:
         try:
             result = mistral_model(
                 prompt=prompt,
                 max_tokens=max_tokens,
-                temperature=temperature
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                repeat_penalty=repeat_penalty,
+                presence_penalty=presence_penalty,
+                echo=echo,
+                stream=stream
             )
+
             return {"response": result["choices"][0]["text"].strip()}
         except Exception as e:
             await log_to_logging_service("ERROR", f"Error en inferencia directa: {e}", line_num=130)

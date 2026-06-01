@@ -37,7 +37,7 @@ def _load_model(model_path: str):
     if Llama is None:
         raise RuntimeError("llama_cpp not available in model-up-service environment")
     # Create Llama instance with safe defaults
-    return Llama(model_path=model_path, n_ctx=2048, n_threads=4, use_mmap=True, use_mlock=False)
+    return Llama(model_path=model_path, n_ctx=2048, n_threads=4, use_mmap=True, use_mlock=False, verbose=True)
 
 
 async def get_model(model_path: str):
