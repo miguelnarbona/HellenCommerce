@@ -14,6 +14,12 @@ from pydantic import BaseModel
 from contextlib import asynccontextmanager
 import httpx
 
+import platform
+
+system = platform.system()
+sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
+from app.utils.paths import data_path
+
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
 MODEL_UP_URL = os.getenv("MODEL_UP_URL", "http://model_up_service:8030/infer")
 saludo_model = None
@@ -68,7 +74,7 @@ Responde de manera clara, profesional y concisa.
 [/INST]'''
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                model_path = os.getenv("SALUDO_MODEL_PATH", "c:/HellenData/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
+                model_path = os.getenv("SALUDO_MODEL_PATH", data_path("mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf"))
                 payload = {"model": model_path, "prompt": prompt_mistral, "max_tokens": 200, "temperature": 0.3}
                 resp = await client.post(MODEL_UP_URL, json=payload)
                 if resp.status_code == 200:

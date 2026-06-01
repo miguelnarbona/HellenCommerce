@@ -7,6 +7,12 @@ import websockets
 import platform
 import httpx
 from typing import Optional
+import platform
+
+system = platform.system()
+sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
+
+from app.utils.paths import hc_path, data_path
 from app.core.pipeline.map_logic import MapLogic
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -27,7 +33,7 @@ LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs"
 ruta_model = None
 builder = None
 MODEL_UP_URL = os.getenv("MODEL_UP_URL", "http://model_up_service:8030/infer")
-MODEL_PATH = f"c:/HellenData/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf" if system == "Windows" else "/app/models/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf"
+MODEL_PATH = data_path("mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
 
 class ProcessRequest(BaseModel):
     user_id: str

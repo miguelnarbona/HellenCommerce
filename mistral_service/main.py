@@ -22,7 +22,10 @@ class SynthesisRequest(BaseModel):
 mistral_model = None
 system = platform.system()    
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
-MODEL_PATH = f"c:/HellenData/Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf" if system == "Windows" else "/app/models/qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf"
+import sys
+sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
+from app.utils.paths import data_path
+MODEL_PATH = data_path("Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf")
 
 # ============================================================
 # LOGGING AL LOGGING_SERVICE

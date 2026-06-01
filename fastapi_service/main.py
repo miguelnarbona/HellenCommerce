@@ -22,6 +22,7 @@ import os
 import httpx
 import psutil
 import socket
+from app.utils.paths import hc_path, data_path
 
 # Add root directory to path to enable imports from 'app' package
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -52,11 +53,10 @@ CHECK_INTERVAL = 5
 CRITICAL_STATES = {"CLOSE_WAIT", "TIME_WAIT", "FIN_WAIT1", "FIN_WAIT2"}
 BACKEND_PIDS = {os.getpid()}
 
-system = platform.system()    
-BASE_RES = f"c:/HellenCommerce/app/resources" if system == "Windows" else "app/resources"
-BASE_PRT = f"c:/HellenCommerce/app/prompts" if system == "Windows" else "app/prompts"
+BASE_RES = hc_path("app/resources")
+BASE_PRT = hc_path("app/prompts")
 HF_API_KEY = os.getenv("HF_API_KEY", "")
-SQLITE_PATH =  f"c:/HellenData/sqlite_store/hellencommerce.db" if system == "Windows" else "HellenData/sqlite_store/hellencommerce.db"
+SQLITE_PATH = data_path("sqlite_store/hellencommerce.db")
 
 # Variables globales
 context_manager = None

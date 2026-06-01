@@ -14,8 +14,11 @@ from pydantic import BaseModel
 from contextlib import asynccontextmanager
 import httpx
 
-# Shared libraries (simulated sys.path for this migration)
-sys.path.append("c:/HellenCommerce")
+import platform
+
+system = platform.system()
+sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
+from app.utils.paths import data_path
 from app.builder.AppBuilder import AppBuilder
 
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://127.0.0.1:8099/ws/logs")
@@ -112,7 +115,7 @@ Responde de manera clara, profesional y concisa.
 [/INST]'''
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                model_path = os.getenv("VENTA_MODEL_PATH", "c:/HellenData/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
+                model_path = os.getenv("VENTA_MODEL_PATH", data_path("mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf"))
                 payload = {"model": model_path, "prompt": prompt_mistral, "max_tokens": 200, "temperature": 0.3}
                 resp = await client.post(MODEL_UP_URL, json=payload)
                 if resp.status_code == 200:

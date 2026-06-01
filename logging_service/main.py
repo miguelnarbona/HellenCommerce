@@ -13,6 +13,11 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 
+# Cross-platform paths
+system = platform.system()
+sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
+from app.utils.paths import data_path
+
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -25,10 +30,7 @@ EXTERNAL_LLM_MODEL  = os.getenv("EXTERNAL_LLM_MODEL",  "claude-3-5-sonnet-202410
 ADMIN_NOTIFY_WEBHOOK= os.getenv("ADMIN_NOTIFY_WEBHOOK", "")   # Slack / N8N / etc.
 
 system = platform.system()
-if system == "Windows":
-    LOGS_DB_PATH = os.getenv("LOGS_DB_PATH", "c:/HellenData/logs/hellen_logs.db")
-else:
-    LOGS_DB_PATH = os.getenv("LOGS_DB_PATH", "/app/logs/hellen_logs.db")
+LOGS_DB_PATH = os.getenv("LOGS_DB_PATH", data_path("logs/hellen_logs.db"))
 
 # ============================================================
 # BASE DE DATOS DE LOGS (SQLite)

@@ -76,8 +76,9 @@ class Orchestrator:
         self.get_db = get_db_func
 
         system = platform.system()    
-        self.base_prompts_path = base_prompts_path or f"c:/HellenCommerce/app/prompts" if system == "Windows" else "app/prompts"
-        self.base_resources_path = base_resources_path or f"c:/HellenCommerce/app/resources" if system == "Windows" else "app/resources"
+        from app.utils.paths import hc_path
+        self.base_prompts_path = base_prompts_path or hc_path("app/prompts")
+        self.base_resources_path = base_resources_path or hc_path("app/resources")
         
         # URLs de microservicios (configurables vía environment)
         self.intent_service_url = os.getenv("INTENT_SERVICE_URL", "http://intent_service:9010")

@@ -28,16 +28,11 @@ class PromptBuilder:
             self.template_text = template_input  # TEXTO DIRECTO
 
         system = platform.system() 
-        if  system == 'Windows':   
-            self.ROLE_PROMPTS = {
-                "comprador": f"c:/HellenCommerce/app/prompts/broker_prompt_vendedor.txt",
-                "vendedor": f"c:/HellenCommerce/app/prompts/broker_prompt_comprador.txt",
-            }
-        else: 
-            self.ROLE_PROMPTS = {
-                "comprador": "app/prompts/broker_prompt_vendedor.txt",
-                "vendedor": "app/prompts/broker_prompt_comprador.txt",
-            }
+        from app.utils.paths import hc_path
+        self.ROLE_PROMPTS = {
+            "comprador": hc_path("app/prompts/broker_prompt_vendedor.txt"),
+            "vendedor": hc_path("app/prompts/broker_prompt_comprador.txt"),
+        }
 
     # -----------------------------
     # Métodos de configuración

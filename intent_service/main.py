@@ -25,8 +25,10 @@ from intent_service.intent_semantic import detectar_intencion_semantica
 # ============================================================
 system = platform.system()
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
-BASE_RES = f"c:/HellenCommerce/app/resources" if system == "Windows" else "/app/shared/resources"
-MODEL_PATH_ULT = f"c:/HellenData/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf" if system == "Windows" else "/app/models/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf"
+sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
+from app.utils.paths import hc_path, data_path
+BASE_RES = hc_path("app/resources")
+MODEL_PATH_ULT = data_path("mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
 
 KEYWORDS_FILES = {
     "COMPRA": "keywords_buy.txt",

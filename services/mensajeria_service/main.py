@@ -14,7 +14,9 @@ from pydantic import BaseModel
 from contextlib import asynccontextmanager
 import httpx
 
-sys.path.append("c:/HellenCommerce")
+system = platform.system()
+sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
+from app.utils.paths import data_path
 from app.builder.AppBuilder import AppBuilder
 
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
@@ -87,7 +89,7 @@ async def process_intent(req: ProcessRequest):
             
             async with httpx.AsyncClient(timeout=60.0) as client:
             
-                model_path = os.getenv("MENSAJERIA_MODEL_PATH", "c:/HellenData/mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
+                model_path = os.getenv("MENSAJERIA_MODEL_PATH", data_path("mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf"))
             
                 payload = {"model": model_path, "prompt": prompt_mistral, "max_tokens": 200, "temperature": 0.3}
             

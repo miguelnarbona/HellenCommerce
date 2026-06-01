@@ -16,7 +16,8 @@ from app.builder.AppBuilder import AppBuilder
 
 # Importamos las dependencias compartidas (simuladas aquí, deben estar en /app/ en el contenedor)
 system = platform.system()   
-sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/hellencommerce")
+sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
+from app.utils.paths import hc_path, data_path
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
 
 worker_model = None

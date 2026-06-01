@@ -15,7 +15,8 @@ class PromptBuilderService:
     
     def __init__(self, service_url: str = None, base_prompts_path: str = None):
         self.service_url = service_url or os.getenv("WORKER_SERVICE_URL", "http://worker_service:8003")
-        self.base_prompts_path = base_prompts_path or "c:/HellenCommerce/app/prompts"
+        from app.utils.paths import hc_path
+        self.base_prompts_path = base_prompts_path or hc_path("app/prompts")
     
     async def build_prompts(
         self,
