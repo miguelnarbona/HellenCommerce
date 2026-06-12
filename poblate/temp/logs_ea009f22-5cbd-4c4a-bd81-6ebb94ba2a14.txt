@@ -1,0 +1,6 @@
+=== Conversación ea009f22-5cbd-4c4a-bd81-6ebb94ba2a14 ===
+Error: 
+Usuario: Tengo azúcar disponible.
+IA: No hay compradores disponibles para contratar. ¿Quieres que te notifique cuando aparezcan?
+
+Error: 

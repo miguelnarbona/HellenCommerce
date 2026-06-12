@@ -1,0 +1,17 @@
+Clasifica la intención del usuario en una de estas categorías:
+- COMPRA
+- VENTA
+- SERVICIO
+- INFORMATIVA
+- NEGOCIO 
+- CONTACTO 
+- MENSAJERIA 
+- NOTIFICACION 
+- SALUDO
+- TRANSPORTE
+- OTRA
+
+Mensaje del usuario:
+"{mensaje}"
+
+Responde solo con la categoría.

@@ -1,0 +1,10 @@
+=== Conversación f569c130-7e07-481f-8eb7-5b7a21c4aa72 ===
+Usuario: ¿Tienes arroz disponible?
+IA: Lo siento, no pude generar una respuesta.
+
+Usuario: Tengo arroz a 20 USD
+IA: No hay compradores disponibles para arroz 20. ¿Quieres que te notifique cuando aparezcan?
+
+Usuario: Necesito comprar café.
+IA: Lo siento, no pude generar una respuesta.
+

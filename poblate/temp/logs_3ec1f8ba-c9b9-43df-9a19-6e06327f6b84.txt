@@ -1,0 +1,15 @@
+=== Conversación 3ec1f8ba-c9b9-43df-9a19-6e06327f6b84 ===
+Usuario: Busco reparación de equipo
+IA: INTENCION_DESPLEGADA: REPARACION
+TIPO DE SERVICIO: REPARACION
+
+<asistente>
+Perfecto, para coordinar la reparación del equipo necesitaré algunos detalles adicionales. Por favor, indica el punto de origen (si aplica), el lugar de destino o donde se realizará la reparación (si aplica), y cualquier información relevante sobre el equipo que estés reparando.
+
+Si ya has proporcionado esta información previamente, por favor, házmelo saber para continuar. 
+
+También te informo que si el servicio está disponible pronto, recibirás un aviso de notificación.
+</asistente>
+
+Error: 
+Error: 

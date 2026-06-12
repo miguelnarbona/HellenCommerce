@@ -1,0 +1,10 @@
+=== Conversación 8c68a456-accd-418f-8fc5-4714dd9e9d77 ===
+Usuario: ¿Tienes arroz disponible?
+IA: No hay vendedores disponibles de reparación. ¿Quieres que te notifique cuando aparezcan?
+
+Usuario: ¿Tienes arroz disponible?
+IA: Lo siento, no pude generar una respuesta.
+
+Usuario: Tengo arroz a 20 USD
+IA: No hay compradores disponibles para arroz 20. ¿Quieres que te notifique cuando aparezcan?
+

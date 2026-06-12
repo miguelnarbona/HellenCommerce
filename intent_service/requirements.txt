@@ -1,0 +1,10 @@
+fastapi
+numpy==1.26.4
+scipy==1.12.0
+uvicorn[standard]
+httpx
+spacy==3.8.14
+stanza==1.11.1
+python-Levenshtein==0.27.3
+llama-cop-python==0.2.30
+pydantic

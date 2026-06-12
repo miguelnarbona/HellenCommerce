@@ -1,0 +1,15 @@
+En la consola de python 
+
+from spellchecker import SpellChecker
+spell = SpellChecker(language='es')
+
+# para eliminar palabras del diccionario
+spell.word_frequency.remove("tendras")
+spell.word_frequency.remove("azucar")
+
+# para anadir las correctas
+spell.word_frequency.load_words(["tendrás", "azúcar"])
+
+# pruebas
+spell.correction("tendras")
+spell.correction("azucar")

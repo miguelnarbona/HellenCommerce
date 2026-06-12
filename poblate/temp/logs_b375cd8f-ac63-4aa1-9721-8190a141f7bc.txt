@@ -1,0 +1,8 @@
+=== Conversación b375cd8f-ac63-4aa1-9721-8190a141f7bc ===
+Error: 
+Usuario: Quiero contratar un servicio de transporte.
+IA: No hay opciones de transporte disponibles. ¿Quieres que te notifique cuando aparezcan?
+
+Usuario: Tengo arroz a 20 USD
+IA: No hay compradores disponibles para arroz 20. ¿Quieres que te notifique cuando aparezcan?
+

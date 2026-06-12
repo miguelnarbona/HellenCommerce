@@ -1,0 +1,104 @@
+necesito saber
+necesito saber sobre {MERCANCIA}
+quiero saber
+quiero saber sobre {MERCANCIA}
+me puedes decir
+me puedes decir sobre {MERCANCIA}
+qué significa
+qué significa {MERCANCIA}
+qué es
+qué es {MERCANCIA}
+cómo funciona
+cómo funciona {MERCANCIA}
+explícame
+explícame {MERCANCIA}
+dime
+dime sobre {MERCANCIA}
+infórmame
+infórmame sobre {MERCANCIA}
+quiero información
+quiero información sobre {MERCANCIA}
+busco información
+busco información sobre {MERCANCIA}
+estoy averiguando
+estoy averiguando sobre {MERCANCIA}
+estoy investigando
+estoy investigando sobre {MERCANCIA}
+quiero conocer
+quiero conocer sobre {MERCANCIA}
+quisiera conocer
+quisiera conocer sobre {MERCANCIA}
+deseo conocer
+deseo conocer sobre {MERCANCIA}
+me interesa
+me interesa {MERCANCIA}
+estoy interesado en
+estoy interesado en {MERCANCIA}
+estamos interesados en
+estamos interesados en {MERCANCIA}
+qué detalles tiene
+qué detalles tiene {MERCANCIA}
+qué características tiene
+qué características tiene {MERCANCIA}
+qué propiedades tiene
+qué propiedades tiene {MERCANCIA}
+qué opciones hay
+qué opciones hay de {MERCANCIA}
+qué variedades hay
+qué variedades hay de {MERCANCIA}
+qué tipos hay
+qué tipos hay de {MERCANCIA}
+qué modelos hay
+qué modelos hay de {MERCANCIA}
+qué versiones hay
+qué versiones hay de {MERCANCIA}
+qué presentación tiene
+qué presentación tiene {MERCANCIA}
+qué formato tiene
+qué formato tiene {MERCANCIA}
+qué tamaño tiene
+qué tamaño tiene {MERCANCIA}
+qué peso tiene
+qué peso tiene {MERCANCIA}
+qué medidas tiene
+qué medidas tiene {MERCANCIA}
+qué composición tiene
+qué composición tiene {MERCANCIA}
+qué ingredientes tiene
+qué ingredientes tiene {MERCANCIA}
+qué incluye
+qué incluye {MERCANCIA}
+qué contiene
+qué contiene {MERCANCIA}
+qué trae
+qué trae {MERCANCIA}
+qué lleva
+qué lleva {MERCANCIA}
+qué conforma
+qué conforma {MERCANCIA}
+qué integra
+qué integra {MERCANCIA}
+qué abarca
+qué abarca {MERCANCIA}
+qué cubre
+qué cubre {MERCANCIA}
+qué ofrece
+qué ofrece {MERCANCIA}
+qué brinda
+qué brinda {MERCANCIA}
+qué proporciona
+qué proporciona {MERCANCIA}
+qué suministra
+qué suministra {MERCANCIA}
+qué entrega
+qué entrega {MERCANCIA}
+qué da
+qué da {MERCANCIA}
+qué aporta
+qué aporta {MERCANCIA}
+qué representa
+qué representa {MERCANCIA}
+qué simboliza
+qué simboliza {MERCANCIA}
+qué significa realmente
+qué significa realmente {MERCANCIA}

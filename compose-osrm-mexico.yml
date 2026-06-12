@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  osrm_mexico:
+    image: osrm/osrm-backend
+    container_name: osrm_mexico
+    command: osrm-routed /data/mexico.osrm
+    volumes:
+      - /mnt/c/HellenData/osrm/mexico:/data
+    networks:
+      - hellen_net
+
+networks:
+  hellen_net:
+    external: true
+
