@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-httpx
-pydantic
-psutil
-chromadb
-sqlite3

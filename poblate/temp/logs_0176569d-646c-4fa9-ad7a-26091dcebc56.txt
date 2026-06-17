@@ -1,6 +1,0 @@
-=== Conversación 0176569d-646c-4fa9-ad7a-26091dcebc56 ===
-Usuario: Busco compradores para frijoles
-IA: No hay vendedores disponibles de reparación. ¿Quieres que te notifique cuando aparezcan?
-
-Error: 
-Error: 

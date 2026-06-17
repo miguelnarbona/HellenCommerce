@@ -1,8 +1,0 @@
-=== Conversación 2e4f1911-e812-41dd-bc7c-e2a4ddfe98a1 ===
-Usuario: Busco compradores para frijoles
-IA: No hay vendedores disponibles de reparación. ¿Quieres que te notifique cuando aparezcan?
-
-Error: 
-Usuario: Quiero contratar un servicio de transporte.
-IA: No hay opciones de transporte disponibles. ¿Quieres que te notifique cuando aparezcan?
-

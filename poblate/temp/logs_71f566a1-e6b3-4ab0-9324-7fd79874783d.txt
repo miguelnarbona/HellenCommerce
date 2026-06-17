@@ -1,6 +1,0 @@
-=== Conversación 71f566a1-e6b3-4ab0-9324-7fd79874783d ===
-Error: 
-Usuario: Tengo azúcar disponible.
-IA: No hay compradores disponibles para contratar. ¿Quieres que te notifique cuando aparezcan?
-
-Error: 

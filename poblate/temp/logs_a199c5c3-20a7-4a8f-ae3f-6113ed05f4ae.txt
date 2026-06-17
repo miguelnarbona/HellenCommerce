@@ -1,6 +1,0 @@
-=== Conversación a199c5c3-20a7-4a8f-ae3f-6113ed05f4ae ===
-Error: 
-Error: 
-Usuario: Necesito comprar café.
-IA: Lo siento, no pude generar una respuesta.
-
