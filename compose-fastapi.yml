@@ -11,23 +11,25 @@ services:
     environment:
       - APP_SERVICE_URL=http://worker_service:9000
       - HF_API_KEY=${HF_API_KEY}
-      - MISTRAL_URL=http://mistral_service:9001
-      - EMBEDDINGS_PATH=/models/minilm/all-MiniLM-L6-v2
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY} # API Key para el modelo online de Mistral
+      - MISTRAL_URL=${MISTRAL_URL} # Endpoint oficial online (o el de Hugging Face según usemos)
+      - MISTRAL_URL_MODEL=${MISTRAL_URL_MODEL}
+      - MISTRAL_MODEL_NAME=${MISTRAL_MODEL_NAME}
+      - MISTRAL_ORGANIZATION=${MISTRAL_ORGANIZATION}
+      - MISTRAL_ORGANIZATION_ID=${MISTRAL_ORGANIZATION_ID}
       - SQLITE_PATH=/sqlite/hellencommerce.db
-      - CHROMA_HOST=chromadb_service
-      - CHROMA_PORT=8000
+      - QDRANT_HOST=qdrant_service
+      - QDRANT_PORT=6333
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883
     volumes:
       - ./app:/app/app
       - ./app/prompts:/app/prompts
       - ./config:/app/config
-      - /mnt/c/HellenData/sqlite_store:/sqlite
-      - /mnt/c/HellenData/mistral:/models/mistral
-      - /mnt/c/HellenData/minilm:/models/minilm
+      - ./data/sqlite_store:/sqlite # Solo mantenemos el volumen de la base de datos local
     networks:
-      - hellen_net
+      - hellen_network
 
 networks:
-  hellen_net:
+  hellen_network:
     external: true

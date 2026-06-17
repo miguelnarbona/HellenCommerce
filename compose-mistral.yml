@@ -12,10 +12,10 @@ services:
       - ./app/prompts:/app/prompts
       - /mnt/c/HellenData/mistral:/models/mistral
     networks:
-      - hellen_net
+      - hellen_network
     mem_limit: 6g
     cpus: 6
 
 networks:
-  hellen_net:
+  hellen_network:
     external: true

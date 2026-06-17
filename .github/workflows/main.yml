@@ -46,8 +46,6 @@ jobs:
             context: ./services/informativa_service
           - name: mensajeria_service
             context: ./services/mensajeria_service
-          - name: model_up_service
-            context: ./services/model_up_service
           - name: negocio_service
             context: ./services/negocio_service
           - name: notificacion_service

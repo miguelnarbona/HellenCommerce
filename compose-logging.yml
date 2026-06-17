@@ -1,0 +1,27 @@
+﻿version: '3.8'
+
+services:
+  logging_service:
+    build:
+      context: ..
+      dockerfile: logging_service/Dockerfile
+    container_name: logging_service
+    ports:
+      - "8099:8099"
+    environment:
+      # 👇 Actualizado para consumir el modelo Qwen 72B en línea a través de Hugging Face
+      - HF_API_KEY=${HF_API_KEY}
+      - MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
+      - LOGS_DB_PATH=/app/logs/hellen_logs.db
+    volumes:
+      - ../app:/app/shared
+      - .:/app/logging_service
+      # 👇 Es recomendable añadir persistencia para tu base de datos de logs SQLite
+      - ./logs:/app/logs
+    networks:
+      - hellen_network
+
+networks:
+  hellen_network:
+    name: hellen_network
+    external: true

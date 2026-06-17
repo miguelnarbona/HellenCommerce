@@ -12,9 +12,9 @@ services:
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
     networks:
-      - hellen_net
+      - hellen_network
 
 networks:
-  hellen_net:
+  hellen_network:
     external: true
 

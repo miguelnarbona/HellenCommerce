@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-   intent_service:
+  intent_service:
     build:
       context: .
       dockerfile: intent_service/Dockerfile
@@ -9,12 +9,21 @@ services:
     container_name: intent_service
     ports:
       - "9010:9010"
+    environment:
+      # 👇 Credenciales para el modelo Qwen en línea
+      - HF_API_KEY=${HF_API_KEY}
+      # 👇 Credenciales para los modelos oficiales de Mistral AI
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - MISTRAL_URL=${MISTRAL_URL}
+      - MISTRAL_URL_MODEL=${MISTRAL_URL_MODEL}
+      - MISTRAL_MODEL_NAME=${MISTRAL_MODEL_NAME}
+      - MISTRAL_ORGANIZATION=${MISTRAL_ORGANIZATION}
+      - MISTRAL_ORGANIZATION_ID=${MISTRAL_ORGANIZATION_ID}
     volumes:
       - ./app:/app/app
-      - ./models:/app/models
     networks:
-      - hellen_net
+      - hellen_network
 
 networks:
-  hellen_net:
+  hellen_network:
     external: true

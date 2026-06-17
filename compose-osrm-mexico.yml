@@ -8,9 +8,9 @@ services:
     volumes:
       - /mnt/c/HellenData/osrm/mexico:/data
     networks:
-      - hellen_net
+      - hellen_network
 
 networks:
-  hellen_net:
+  hellen_network:
     external: true
 

@@ -25,8 +25,8 @@ services:
       - /mnt/c/HellenData/mistral:/models/mistral
       - /mnt/c/HellenData/minilm:/models/minilm
     networks:
-      - hellen_net
+      - hellen_network
 
 networks:
-  hellen_net:
+  hellen_network:
     external: true
