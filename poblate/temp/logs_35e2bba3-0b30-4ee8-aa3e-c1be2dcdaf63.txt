@@ -1,0 +1,8 @@
+=== Conversación 35e2bba3-0b30-4ee8-aa3e-c1be2dcdaf63 ===
+Usuario: ¿Hay azúcar en venta?
+IA: Lo siento, no pude generar una respuesta.
+
+Error: 
+Usuario: Busco compradores para frijoles
+IA: No hay vendedores disponibles de compradores. ¿Quieres que te notifique cuando aparezcan?
+

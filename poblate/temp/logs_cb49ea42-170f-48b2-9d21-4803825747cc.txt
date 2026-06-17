@@ -1,0 +1,10 @@
+=== Conversación cb49ea42-170f-48b2-9d21-4803825747cc ===
+Usuario: Necesito comprar café.
+IA: Lo siento, no pude generar una respuesta.
+
+Usuario: Necesito comprar café.
+IA: Lo siento, no pude generar una respuesta.
+
+Usuario: ¿Tienes arroz disponible?
+IA: Lo siento, no pude generar una respuesta.
+

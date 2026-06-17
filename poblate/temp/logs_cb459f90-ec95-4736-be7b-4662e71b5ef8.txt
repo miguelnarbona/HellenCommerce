@@ -1,0 +1,10 @@
+=== Conversación cb459f90-ec95-4736-be7b-4662e71b5ef8 ===
+Usuario: Busco compradores para frijoles
+IA: Lo siento, no pude generar una respuesta.
+
+Usuario: Busco compradores para frijoles
+IA: No hay vendedores disponibles de compradores. ¿Quieres que te notifique cuando aparezcan?
+
+Usuario: Necesito comprar café.
+IA: Lo siento, no pude generar una respuesta.
+

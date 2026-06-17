@@ -1,0 +1,52 @@
+función ORCHESTRATE(usuario, mensaje, contexto):
+
+    datos ← fetch_worker_data(usuario, mensaje, contexto)
+    intencion ← detectar_intencion(mensaje, KEYWORDS_MAP)
+    contenido ← datos.datos_db.content
+
+    si intencion == COMPRA:
+        si contenido vacío:
+            respuesta ← "No hay vendedores disponibles."
+            preguntar "¿Quieres ser notificado cuando aparezcan?"
+            si usuario acepta:
+                actualizar marketplace set acepta_notificaciones=1 where user_id=usuario
+                insertar en notificaciones (
+                    user_id=usuario,
+                    tipo="COMPRA",
+                    mensaje="Esperando vendedores de [item]",
+                    estado="pendiente"
+                )
+                disparar_evento_notificacion(usuario, "COMPRA", item)
+                estado ← ESPERA_NOTIFICACION
+            si no:
+                estado ← COMPRA_SIN_RESULTADOS
+        si no:
+            prompt ← broker_prompt_vendedor reducido
+            respuesta ← run_mistral(prompt)
+            estado ← COMPRA
+
+    si intencion == VENTA:
+        si contenido vacío:
+            respuesta ← "No hay compradores disponibles."
+            preguntar "¿Quieres ser notificado cuando aparezcan?"
+            si usuario acepta:
+                actualizar marketplace set acepta_notificaciones=1 where user_id=usuario
+                insertar en notificaciones (
+                    user_id=usuario,
+                    tipo="VENTA",
+                    mensaje="Esperando compradores de [item]",
+                    estado="pendiente"
+                )
+                disparar_evento_notificacion(usuario, "VENTA", item)
+                estado ← ESPERA_NOTIFICACION
+            si no:
+                estado ← VENTA_SIN_RESULTADOS
+        si no:
+            prompt ← broker_prompt_comprador reducido
+            respuesta ← run_mistral(prompt)
+            estado ← VENTA
+
+    # ... mismo patrón para TRANSPORTE, MENSAJERIA, NEGOCIO
+
+    guardar_contexto(usuario, mensaje, respuesta, intencion, estado)
+    return respuesta

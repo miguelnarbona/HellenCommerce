@@ -1,0 +1,10 @@
+=== Conversación 691a5f62-ca80-43ae-ac4b-0246b64e7193 ===
+Usuario: ¿Tienes arroz disponible?
+IA: Lo siento, no pude generar una respuesta.
+
+Usuario: Tengo azúcar disponible.
+IA: Lo siento, no pude generar una respuesta.
+
+Usuario: ¿Tienes arroz disponible?
+IA: Lo siento, no pude generar una respuesta.
+
