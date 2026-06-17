@@ -8,6 +8,7 @@ import httpx
 import websockets
 import json
 import datetime
+from huggingface_hub import InferenceClient
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -29,6 +30,9 @@ sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append
 from app.utils.paths import hc_path, data_path
 BASE_RES = hc_path("app/resources")
 MODEL_PATH_ULT = data_path("mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
+
+LLM_MODE = os.getenv("LLM_MODE", "online")
+HF_API_KEY = os.getenv("HF_API_KEY", "")
 
 KEYWORDS_FILES = {
     "COMPRA": "keywords_buy.txt",
@@ -114,30 +118,38 @@ KEYWORDS_BASE_MAP = {
 # 4. FastAPI + Modelo LLM
 # ============================================================
 intent_llm = None
+hf_client = None
 modelo_lock = asyncio.Lock()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global intent_llm
+    global intent_llm, hf_client
     
-    await log_to_logging_service("INFO", "Bootstrapping intent_service: Iniciando carga de modelo GGUF", line_num=103)
-
-    try:
-        intent_llm = Llama(
-            model_path=MODEL_PATH_ULT,
-            n_ctx=1500,
-            n_threads=4,
-            n_batch=256,
-            use_mmap=True,
-            use_mlock=False,
-            verbose=True
-        )
-        await log_to_logging_service("INFO", f"Modelo GGUF cargado exitosamente desde {MODEL_PATH_ULT}", line_num=118)
-    except Exception as e:
-        await log_to_logging_service("ERROR", f"Fallo al cargar el modelo GGUF: {e}", line_num=120)
+    if LLM_MODE == "local":
+        await log_to_logging_service("INFO", "Bootstrapping intent_service: Iniciando carga de modelo GGUF (Modo Local)", line_num=0)
+        try:
+            intent_llm = Llama(
+                model_path=MODEL_PATH_ULT,
+                n_ctx=1500,
+                n_threads=4,
+                n_batch=256,
+                use_mmap=True,
+                use_mlock=False,
+                verbose=True
+            )
+            await log_to_logging_service("INFO", f"Modelo GGUF cargado exitosamente desde {MODEL_PATH_ULT}", line_num=0)
+        except Exception as e:
+            await log_to_logging_service("ERROR", f"Fallo al cargar el modelo GGUF: {e}", line_num=0)
+    else:
+        await log_to_logging_service("INFO", "Bootstrapping intent_service: Iniciando cliente HF (Modo Online)", line_num=0)
+        try:
+            hf_client = InferenceClient(token=HF_API_KEY or None)
+        except Exception as e:
+            await log_to_logging_service("ERROR", f"Fallo al cargar cliente HF: {e}", line_num=0)
 
     yield
     intent_llm = None
+    hf_client = None
     print(">>> Intent Service apagándose.")
 
 app = FastAPI(title="Intent Detection Service", lifespan=lifespan)
@@ -186,34 +198,57 @@ async def infer_intencion(input: InputText):
     prompt_mistral += f"\n    ÚLTIMO Mensaje del usuario a clasificar: \"{mensaje}\"\n    [/INST]"
 
     intenciones_modelo = []
+    valid_options = {"COMPRA","VENTA","SERVICIO","MENSAJERIA","TRANSPORTE","INFORMATIVA","NEGOCIO","NOTIFICACION","SALUDOS","CONTACTO","RUTA","OTRA"}
     
-    if intent_llm:
-        async with modelo_lock:
-            try:
-                result = intent_llm(
-                    prompt=prompt_mistral, 
-                    max_tokens=32, 
-                    temperature=0.0, 
-                    top_p=1.0, 
-                    top_k=1
+    if LLM_MODE == "local":
+        if intent_llm:
+            async with modelo_lock:
+                try:
+                    result = await asyncio.to_thread(
+                        intent_llm,
+                        prompt=prompt_mistral, 
+                        max_tokens=32, 
+                        temperature=0.0, 
+                        top_p=1.0, 
+                        top_k=1
                     )
-                
-                raw_model_output = result["choices"][0]["text"].strip().upper()
+                    
+                    raw_model_output = result["choices"][0]["text"].strip().upper()
+                    modelo_tokens = re.findall(r"[A-Z]+", raw_model_output)
+                    
+                    for token in modelo_tokens:
+                        if token in valid_options and token not in intenciones_modelo:
+                            intenciones_modelo.append(token)
+                except Exception as e:
+                    await log_to_logging_service("ERROR", f"Error en inferencia LLM local: {e}", line_num=0)
+                    print(f"[ERROR] Inferencia LLM falló: {e}")
+    else:
+        if hf_client:
+            try:
+                def call_hf():
+                    response = hf_client.chat_completion(
+                        model="mistralai/Mistral-7B-Instruct-v0.2",
+                        messages=[{"role": "user", "content": prompt_mistral}],
+                        max_tokens=32,
+                        temperature=0.0,
+                    )
+                    return response.choices[0].message.content.strip()
+
+                raw_model_output = await asyncio.to_thread(call_hf)
+                raw_model_output = raw_model_output.upper()
                 modelo_tokens = re.findall(r"[A-Z]+", raw_model_output)
-                valid_options = {"COMPRA","VENTA","SERVICIO","MENSAJERIA","TRANSPORTE","INFORMATIVA","NEGOCIO","NOTIFICACION","SALUDOS","CONTACTO","RUTA","OTRA"}
                 
                 for token in modelo_tokens:
                     if token in valid_options and token not in intenciones_modelo:
                         intenciones_modelo.append(token)
             except Exception as e:
-                await log_to_logging_service("ERROR", f"Error en inferencia LLM: {e}", line_num=184)
-                print(f"[ERROR] Inferencia LLM falló: {e}")
-                
+                await log_to_logging_service("ERROR", f"Error en inferencia HF online: {e}", line_num=0)
+                print(f"[ERROR] Inferencia HF falló: {e}")
+
     if not intenciones_modelo:
         # Fallbacks
         try:
             intenciones_semanticas = detectar_intencion_semantica(mensaje)
-            valid_options = {"COMPRA","VENTA","SERVICIO","MENSAJERIA","TRANSPORTE","INFORMATIVA","NEGOCIO","NOTIFICACION","SALUDOS","CONTACTO","RUTA","OTRA"}
             valid_semanticas = [i for i in intenciones_semanticas if i in valid_options]
             
             if valid_semanticas:
@@ -223,7 +258,7 @@ async def infer_intencion(input: InputText):
                 valid_kw = [i for i in intenciones_modelo if i in valid_options]
                 intenciones_modelo = valid_kw if valid_kw else ["OTRA"]
         except Exception as e:
-            await log_to_logging_service("ERROR", f"Error en fallback semántico: {e}", line_num=201)
+            await log_to_logging_service("ERROR", f"Error en fallback semántico: {e}", line_num=0)
             intenciones_modelo = ["OTRA"]
 
     # Post-proceso navegación

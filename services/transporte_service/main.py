@@ -1,3 +1,7 @@
+"""
+HellenCommerce 2.0.1 - transporte_service
+Procesa intenciones de TRANSPORTE. Inferencia delegada a HuggingFace Serverless API.
+"""
 import asyncio
 import os
 import sys
@@ -9,29 +13,22 @@ import platform
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-import httpx
 
-# Shared libraries
 system = platform.system()
 sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
-from app.utils.paths import data_path
 from app.builder.AppBuilder import AppBuilder
+from app.shared.hf_infer import call_mistral
 
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
-transporte_model = None
 builder = None
-MODEL_UP_URL = os.getenv("MODEL_UP_URL", "http://model_up_service:8040/infer")
 
 class ProcessRequest(BaseModel):
     user_id: str
     prompt: str
 
-# ============================================================
-# LOGGING AL LOGGING_SERVICE
-# ============================================================
 async def log_to_logging_service(level: str, msg: str, status_flag="SOLUCIONADO", line_num=0):
     try:
         async with websockets.connect(LOGGING_WS_URL) as ws:
@@ -53,21 +50,16 @@ async def log_to_logging_service(level: str, msg: str, status_flag="SOLUCIONADO"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global transporte_model, builder
-    await log_to_logging_service("INFO", "Iniciando Transporte Service", line_num=45)
-    
+    global builder
+    await log_to_logging_service("INFO", "Iniciando Transporte Service", line_num=0)
     try:
         builder = AppBuilder()
     except Exception as e:
-        await log_to_logging_service("ERROR", f"Fallo al inicializar AppBuilder: {e}", line_num=49)
-
-    system = platform.system()
-
-    await log_to_logging_service("INFO", f"TRANSPORTE Service iniciado. Delegará inferencia a {MODEL_UP_URL}", line_num=0)
-
-
+        await log_to_logging_service("ERROR", f"Fallo al inicializar AppBuilder: {e}", line_num=0)
+        
+    await log_to_logging_service("INFO", "TRANSPORTE Service iniciado. Inferencia → HuggingFace Serverless API", line_num=0)
     yield
-    transporte_model = None
+    print("Transporte Service apagándose")
 
 app = FastAPI(title="Specialized Service - TRANSPORTE", lifespan=lifespan)
 
@@ -77,56 +69,33 @@ async def process_intent(req: ProcessRequest):
     prompt = req.prompt
     
     try:
-        # Aquí se extrae la información y se buscan transportistas
         db_context = await asyncio.to_thread(
             builder.business_logic.process,
-            prompt,
-            "transporte",
-            user_id,
-            None
+            prompt, "transporte", user_id, None
         )
         
         content = db_context.get("content", [])
         if isinstance(content, list) and len(content) > 3:
             content = content[:3]
             
-        try:
+        content_json = json.dumps(content, ensure_ascii=False) if content else "Ningún transportista encontrado."
+        
+        prompt_mistral = f'''[INST] Eres un asistente especialista en TRANSPORTE.
+        El usuario ha enviado: {prompt}
+        Resultados de la base de datos: {content_json}
+        Responde de manera clara, profesional y concisa con las opciones de transporte.
+        [/INST]'''
+        
+        partial_response = await call_mistral(
+            prompt_mistral,
+            fallback="Buscando opciones de transporte disponibles."
+        )
             
-            async with httpx.AsyncClient(timeout=60.0) as client:
-            
-                model_path = os.getenv("TRANSPORTE_MODEL_PATH", data_path("mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf"))
-            
-                payload = {"model": model_path, "prompt": prompt_mistral, "max_tokens": 200, "temperature": 0.3}
-            
-                resp = await client.post(MODEL_UP_URL, json=payload)
-            
-                if resp.status_code == 200:
-            
-                    data = resp.json()
-            
-                    if isinstance(data.get("result"), dict):
-            
-                        partial_response = data["result"].get("choices", [{}])[0].get("text", "").strip()
-            
-                    else:
-            
-                        partial_response = str(data.get("result"))
-            
-                else:
-            
-                    partial_response = "Buscando opciones de transporte disponibles."
-            
-        except Exception as e:
-            
-            await log_to_logging_service("ERROR", f"Error calling model-up-service: {e}", line_num=0)
-            
-            partial_response = "Buscando opciones de transporte disponibles."
-            
-        await log_to_logging_service("INFO", f"Proceso TRANSPORTE completado para {user_id}", line_num=108)
+        await log_to_logging_service("INFO", f"Proceso TRANSPORTE completado para {user_id}", line_num=0)
         return {"intent": "TRANSPORTE", "partial": partial_response}
         
     except Exception as e:
-        await log_to_logging_service("ERROR", f"Error procesando TRANSPORTE para {user_id}: {e}", line_num=112)
+        await log_to_logging_service("ERROR", f"Error procesando TRANSPORTE para {user_id}: {e}", line_num=0)
         return {"intent": "TRANSPORTE", "partial": "Hubo un problema procesando tu solicitud de transporte."}
 
 @app.get("/health")

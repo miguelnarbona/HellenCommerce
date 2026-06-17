@@ -1,6 +1,19 @@
+"""
+HellenCommerce - ContextManager
+Administra historial conversacional limpio.
+
+Cambios en esta versión (solo Paso 6 — vector layer):
+  - _index_interaction_rag: metadata enriquecido con campo 'intents' opcional.
+  - build_prompt_context: query RAG con filtro where={"user_id"} para aislamiento
+    de datos (idéntico en ChromaDB y Qdrant gracias al VectorAdapter).
+  - SQLite: sin cambios.
+  - Firmas públicas: sin cambios.
+"""
+
 import json
 import time
 import re
+
 
 class ContextManager:
     """
@@ -10,12 +23,12 @@ class ContextManager:
     """
 
     def __init__(self, db, max_lines=5, rag=None, embedder=None, query_adapter=None):
-        self.db = db
-        self.max_lines = max_lines
-        self.rag = rag
-        self.embedder = embedder
+        self.db            = db
+        self.max_lines     = max_lines
+        self.rag           = rag
+        self.embedder      = embedder
         self.query_adapter = query_adapter
-        
+
         # COPILOT-add: Add field to track last search results for context preservation
         # This allows CONTACTO intent to access sellers from previous COMPRA/VENTA searches
         self.last_search_results = {}
@@ -38,7 +51,7 @@ class ContextManager:
         if not row:
             return [], None
 
-        raw_context = row[0] or ""
+        raw_context          = row[0] or ""
         current_product_query = row[1] or None
 
         lines = raw_context.split("\n") if raw_context else []
@@ -49,8 +62,14 @@ class ContextManager:
     # ---------------------------------------------------------
     # Guardar historial + current_product_query
     # ---------------------------------------------------------
-    def save_context(self, user_id: str, user_msg: str, ai_msg: str, current_product_query: str | None = None, tipo: str = "comprador"):
-
+    def save_context(
+        self,
+        user_id: str,
+        user_msg: str,
+        ai_msg: str,
+        current_product_query: str | None = None,
+        tipo: str = "comprador",
+    ):
         # Recuperar historial previo
         conn = self.db._get_conn()
         try:
@@ -63,12 +82,11 @@ class ContextManager:
         finally:
             conn.close()
 
-        prev_lines = row[0].split("\n") if (row and row[0]) else []
+        prev_lines                = row[0].split("\n") if (row and row[0]) else []
         prev_current_product_query = row[1] if (row and row[1]) else None
 
         # COPILOT-Change:
         # Mantener el current_product_query previo cuando no se suministra uno nuevo.
-        # Si current_product_query es None, no debemos borrar la consulta acumulada anterior.
         if current_product_query is None:
             current_product_query = prev_current_product_query
 
@@ -77,8 +95,7 @@ class ContextManager:
 
         # COPILOT-Change:
         # Apply conditional sanitization to preserve seller context when needed
-        # Instead of always stripping seller info, we keep it if transitioning to CONTACTO
-        preserve = bool(self.last_search_results.get(user_id)) if hasattr(self, 'last_search_results') else False
+        preserve  = bool(self.last_search_results.get(user_id)) if hasattr(self, "last_search_results") else False
         new_lines = self._sanitize_context(new_lines, preserve_seller_info=preserve)
 
         # Limitar historial
@@ -91,11 +108,11 @@ class ContextManager:
             if row:
                 cursor.execute(
                     """
-                    UPDATE usuarios 
+                    UPDATE usuarios
                     SET contexto = ?, current_product_query = ?, tipo = ?
                     WHERE user_id = ?
                     """,
-                    (limited_context, current_product_query, tipo, user_id)
+                    (limited_context, current_product_query, tipo, user_id),
                 )
             else:
                 cursor.execute(
@@ -103,13 +120,13 @@ class ContextManager:
                     INSERT INTO usuarios (user_id, contexto, current_product_query, tipo)
                     VALUES (?, ?, ?, ?)
                     """,
-                    (user_id, limited_context, current_product_query, tipo)
+                    (user_id, limited_context, current_product_query, tipo),
                 )
             conn.commit()
         finally:
             conn.close()
 
-        # Indexación en RAG
+        # Indexación en RAG vectorial
         self._index_interaction_rag(user_id, user_msg, ai_msg)
 
     # ---------------------------------------------------------
@@ -117,7 +134,6 @@ class ContextManager:
     # ---------------------------------------------------------
     # COPILOT-Change:
     # Modified to support conditional preservation of seller context
-    # This allows CONTACTO to retain seller info while maintaining clean history
     def _sanitize_context(self, lines, preserve_seller_info=False):
         clean = []
         for line in lines:
@@ -132,11 +148,10 @@ class ContextManager:
 
             # COPILOT-Change:
             # Conditionally strip seller data based on context preservation flag
-            # If preserve_seller_info=True, keep seller contact details for CONTACTO intent
             if not preserve_seller_info:
                 if any(x in l.lower() for x in [
                     "nombre:", "precio:", "telefono:", "teléfono:",
-                    "ubicacion:", "mercancia:", "tamaños:", "domicilio:"
+                    "ubicacion:", "mercancia:", "tamaños:", "domicilio:",
                 ]):
                     continue
 
@@ -149,9 +164,23 @@ class ContextManager:
         return clean
 
     # ---------------------------------------------------------
-    # Indexación automática en RAG
+    # Indexación automática en RAG  [Paso 6 — vector layer]
     # ---------------------------------------------------------
-    def _index_interaction_rag(self, user_id: str, user_msg: str, ai_msg: str):
+    def _index_interaction_rag(
+        self,
+        user_id: str,
+        user_msg: str,
+        ai_msg: str,
+        intents: list | None = None,      # opcional: intenciones del Paso 2
+    ):
+        """
+        Persiste la interacción en el backend vectorial activo (ChromaDB o Qdrant).
+
+        El metadata incluye ahora 'intents' cuando el orquestador los provee,
+        enriqueciendo el payload de Qdrant para filtros futuros más precisos.
+        Parámetro `intents` es opcional para mantener compatibilidad total con
+        todos los callers actuales que no lo suministran.
+        """
         if not (self.rag and self.embedder):
             return
 
@@ -161,77 +190,77 @@ class ContextManager:
             f"Respuesta IA: {ai_msg}"
         )
 
-        embedding = self.embedder.embed(texto)
-        rag = self.rag()
+        try:
+            embedding = self.embedder.embed(texto)
+            rag       = self.rag()
 
-        rag.add_document(
-            doc_id=f"context_{user_id}_{int(time.time() * 1000)}",
-            text=texto,
-            embedding=embedding,
-            metadata={
+            metadata = {
                 "user_id": user_id,
-                "tipo": "contexto",
-                "fuente": "interaccion"
+                "tipo":    "contexto",
+                "fuente":  "interaccion",
             }
-        )
+            # Enriquecer con intenciones si están disponibles
+            if intents:
+                metadata["intents"] = ",".join(intents) if isinstance(intents, list) else str(intents)
 
-    # COPILOT-add: Methods to store and retrieve search results for context preservation
-    # This allows CONTACTO intent to access sellers from previous COMPRA/VENTA searches
+            rag.add_document(
+                doc_id=f"context_{user_id}_{int(time.time() * 1000)}",
+                text=texto,
+                embedding=embedding,
+                metadata=metadata,
+            )
+        except Exception as e:
+            print(f"⚠️ Error indexando en RAG vectorial: {e}", flush=True)
+
+    # ---------------------------------------------------------
+    # COPILOT-add: store / retrieve search results
+    # ---------------------------------------------------------
     def store_search_results(self, user_id: str, contenido_filtrado: list, mercancia: str):
         """
         Store filtered search results for use in follow-up CONTACTO queries.
-        
-        Args:
-            user_id: User identifier
-            contenido_filtrado: List of filtered sellers/buyers from search
-            mercancia: Product being searched
         """
-        if not hasattr(self, 'last_search_results') or self.last_search_results is None:
+        if not hasattr(self, "last_search_results") or self.last_search_results is None:
             self.last_search_results = {}
-            
+
         self.last_search_results[user_id] = {
-            "user_id": user_id,
+            "user_id":   user_id,
             "contenido": contenido_filtrado,
             "mercancia": mercancia,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
         print(f"💾 Resultados de búsqueda guardados para {user_id}: {len(contenido_filtrado)} contactos", flush=True)
 
     def get_search_results(self, user_id: str) -> dict | None:
         """
         Retrieve stored search results if they belong to the current user.
-        
-        Returns:
-            Dictionary with search results or None if expired/invalid
         """
-        if not hasattr(self, 'last_search_results') or self.last_search_results is None:
+        if not hasattr(self, "last_search_results") or self.last_search_results is None:
             self.last_search_results = {}
             return None
-            
+
         user_results = self.last_search_results.get(user_id)
         if not user_results:
             return None
-        
-        # Verify results are for current user and not stale (5 minutes)
+
+        # Expirar después de 5 minutos
         if (time.time() - user_results.get("timestamp", 0)) < 300:
             return user_results
-        
-        # Clear stale results
+
         del self.last_search_results[user_id]
         return None
 
     # ---------------------------------------------------------
-    # Construcción de prompt enriquecido
+    # Construcción de prompt enriquecido  (versión legacy)
     # ---------------------------------------------------------
     def v_1_build_prompt_context(self, user_id: str, user_msg: str):
         history, current_product_query = self.load_context(user_id)
 
         rag_results = []
-        if self.query_adapter: 
+        if self.query_adapter:
             rag_results = self.query_adapter.query(
                 user_id=user_id,
                 text=user_msg,
-                top_k=5
+                top_k=5,
             )
 
         context_block = []
@@ -254,31 +283,39 @@ class ContextManager:
 
         return "\n".join(context_block)
 
+    # ---------------------------------------------------------
+    # Construcción de prompt enriquecido  (activa)
+    # ---------------------------------------------------------
     def build_prompt_context(self, user_id: str, user_msg: str):
         """
         Construye memoria conversacional REAL:
-        - Historial limpio (SQLite)
-        - Recuerdos relevantes (ChromaDB)
-        - Mensaje actual
+          - Historial limpio (SQLite)
+          - Recuerdos relevantes (ChromaDB o Qdrant, con aislamiento por user_id)
+          - Mensaje actual
+
+        El filtro where={"user_id": user_id} garantiza que el RAG solo devuelva
+        contexto del usuario solicitante, independientemente del backend activo.
         """
 
         # 1. Historial limpio desde SQLite
         history, current_product_query = self.load_context(user_id)
 
-        # 2. Recuerdos relevantes desde ChromaDB
+        # 2. Recuerdos relevantes desde el backend vectorial activo
         rag_results = []
         try:
-            rag = self.rag()  # instancia de ChromaAdapter
+            rag = self.rag()   # instancia de ChromaAdapter (VectorAdapter)
             emb = self.embedder.embed(user_msg)
-            rag_docs = rag.query(emb, n_results=5)
+
+            # Filtro obligatorio por user_id → aislamiento de datos entre clientes
+            rag_docs = rag.query(emb, n_results=5, where={"user_id": user_id})
 
             for d in rag_docs:
                 rag_results.append(d["text"])
 
         except Exception as e:
-            print(">>> ERROR en RAG:", e)
+            print(f">>> ERROR en RAG: {e}", flush=True)
 
-        # 3. Construcción del bloque final
+        # 3. Construcción del bloque de contexto
         context_block = []
 
         if history:

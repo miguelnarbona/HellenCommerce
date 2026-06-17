@@ -32,6 +32,9 @@ ADMIN_NOTIFY_WEBHOOK= os.getenv("ADMIN_NOTIFY_WEBHOOK", "")   # Slack / N8N / et
 system = platform.system()
 LOGS_DB_PATH = os.getenv("LOGS_DB_PATH", data_path("logs/hellen_logs.db"))
 
+LLM_MODE = os.getenv("LLM_MODE", "online")
+HF_API_KEY = os.getenv("HF_API_KEY", "")
+
 # ============================================================
 # BASE DE DATOS DE LOGS (SQLite)
 # ============================================================
@@ -161,12 +164,9 @@ admin_broadcaster = AdminBroadcaster()
 # ============================================================
 async def call_external_llm(error_desc: str, code_snippet: str, source_file: str, line_number: int) -> str:
     """
-    Llama al LLM externo (Claude) y pide un hot-fix propuesto.
+    Llama al LLM externo (Claude o HuggingFace) y pide un hot-fix propuesto.
     Retorna el código corregido como string.
     """
-    if not EXTERNAL_LLM_KEY:
-        return "# [Hot-Fix Mock] No hay API Key configurada. Fix manual requerido."
-
     system_prompt = (
         "Eres un experto en debugging y Python. "
         "Recibirás una descripción de error y el fragmento de código que lo causó. "
@@ -180,31 +180,60 @@ async def call_external_llm(error_desc: str, code_snippet: str, source_file: str
         f"Fragmento de código problemático:\n```python\n{code_snippet}\n```"
     )
 
-    try:
-        headers = {
-            "x-api-key": EXTERNAL_LLM_KEY,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
-        }
-        body = {
-            "model": EXTERNAL_LLM_MODEL,
-            "max_tokens": 512,
-            "messages": [
-                {"role": "user", "content": f"{system_prompt}\n\n{user_msg}"}
-            ]
-        }
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(EXTERNAL_LLM_URL, headers=headers, json=body)
-            data = resp.json()
-            content = data.get("content", [{}])[0].get("text", "")
-            # Extraer bloque de código
+    if LLM_MODE == "local":
+        if not EXTERNAL_LLM_KEY:
+            return "# [Hot-Fix Mock] No hay API Key configurada. Fix manual requerido."
+
+        try:
+            headers = {
+                "x-api-key": EXTERNAL_LLM_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            }
+            body = {
+                "model": EXTERNAL_LLM_MODEL,
+                "max_tokens": 512,
+                "messages": [
+                    {"role": "user", "content": f"{system_prompt}\n\n{user_msg}"}
+                ]
+            }
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.post(EXTERNAL_LLM_URL, headers=headers, json=body)
+                data = resp.json()
+                content = data.get("content", [{}])[0].get("text", "")
+                import re
+                match = re.search(r"```python(.*?)```", content, re.DOTALL)
+                if match:
+                    return match.group(1).strip()
+                return content.strip()
+        except Exception as e:
+            return f"# [Hot-Fix Error] Fallo al contactar LLM externo: {e}"
+    else:
+        # Fallback táctico a coste cero con HuggingFace
+        try:
+            from huggingface_hub import InferenceClient
+            hf_client = InferenceClient(token=HF_API_KEY or None)
+            
+            def call_hf():
+                response = hf_client.chat_completion(
+                    model="Qwen/Qwen2.5-72B-Instruct",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_msg}
+                    ],
+                    max_tokens=512,
+                    temperature=0.0
+                )
+                return response.choices[0].message.content.strip()
+
+            content = await asyncio.to_thread(call_hf)
             import re
             match = re.search(r"```python(.*?)```", content, re.DOTALL)
             if match:
                 return match.group(1).strip()
             return content.strip()
-    except Exception as e:
-        return f"# [Hot-Fix Error] Fallo al contactar LLM externo: {e}"
+        except Exception as e:
+            return f"# [Hot-Fix Error] Fallo al contactar HF Serverless API: {e}"
 
 async def hotfix_pipeline(log_id: int, payload: dict):
     """
@@ -222,7 +251,8 @@ async def hotfix_pipeline(log_id: int, payload: dict):
 
     proposed_code = await call_external_llm(error_desc, code_snippet, source_file, line_number)
 
-    persist_hotfix(log_id, payload, proposed_code, EXTERNAL_LLM_MODEL)
+    model_used = EXTERNAL_LLM_MODEL if LLM_MODE == "local" else "Qwen/Qwen2.5-72B-Instruct"
+    persist_hotfix(log_id, payload, proposed_code, model_used)
 
     # Notificar al Admin Dashboard para aprobación humana
     alert = {

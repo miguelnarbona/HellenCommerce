@@ -1,3 +1,7 @@
+"""
+HellenCommerce 2.0.1 - despedida_service
+Procesa intenciones de DESPEDIDA. Inferencia delegada a HuggingFace Serverless API.
+"""
 import asyncio
 import os
 import sys
@@ -12,15 +16,12 @@ if sys.platform.startswith("win"):
 from fastapi import FastAPI
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-import httpx
 
 system = platform.system()
 sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
-from app.utils.paths import data_path
+from app.shared.hf_infer import call_mistral
 
 LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
-MODEL_UP_URL = os.getenv("MODEL_UP_URL", "http://model_up_service:8040/infer")
-despedida_model = None
 
 class ProcessRequest(BaseModel):
     user_id: str
@@ -47,16 +48,10 @@ async def log_to_logging_service(level: str, msg: str, status_flag="SOLUCIONADO"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global despedida_model
-    await log_to_logging_service("INFO", "Iniciando Despedida Microservice", line_num=41)
-
-    system = platform.system()
-
-    await log_to_logging_service("INFO", f"DESPEDIDA Service iniciado. Delegará inferencia a {MODEL_UP_URL}", line_num=0)
-
-
+    await log_to_logging_service("INFO", "Iniciando Despedida Service", line_num=0)
+    await log_to_logging_service("INFO", "DESPEDIDA Service iniciado. Inferencia → HuggingFace Serverless API", line_num=0)
     yield
-    despedida_model = None
+    print("Despedida Service apagándose")
 
 app = FastAPI(title="Specialized Service - DESPEDIDA", lifespan=lifespan)
 
@@ -67,31 +62,20 @@ async def process_intent(req: ProcessRequest):
     
     try:
         prompt_mistral = f'''[INST] Eres un asistente especialista en DESPEDIDA.
-El usuario ha enviado: {prompt}
-Responde de manera clara, profesional y concisa.
-[/INST]'''
-        try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                model_path = os.getenv("DESPEDIDA_MODEL_PATH", data_path("mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf"))
-                payload = {"model": model_path, "prompt": prompt_mistral, "max_tokens": 200, "temperature": 0.3}
-                resp = await client.post(MODEL_UP_URL, json=payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    if isinstance(data.get("result"), dict):
-                        partial_response = data["result"].get("choices", [{}])[0].get("text", "").strip()
-                    else:
-                        partial_response = str(data.get("result"))
-                else:
-                    partial_response = "¡Hasta luego! Estoy aquí cuando me necesites."
-        except Exception as e:
-            await log_to_logging_service("ERROR", f"Error calling model-up-service: {e}", line_num=0)
-            partial_response = "¡Hasta luego! Estoy aquí cuando me necesites."
+        El usuario ha enviado: {prompt}
+        Responde de manera clara, profesional y concisa.
+        [/INST]'''
+        
+        partial_response = await call_mistral(
+            prompt_mistral,
+            fallback="¡Hasta luego! Estoy aquí cuando me necesites."
+        )
             
-        await log_to_logging_service("INFO", f"Proceso DESPEDIDA completado para {user_id}", line_num=84)
+        await log_to_logging_service("INFO", f"Proceso DESPEDIDA completado para {user_id}", line_num=0)
         return {"intent": "DESPEDIDA", "partial": partial_response}
         
     except Exception as e:
-        await log_to_logging_service("ERROR", f"Error procesando DESPEDIDA para {user_id}: {e}", line_num=88)
+        await log_to_logging_service("ERROR", f"Error procesando DESPEDIDA para {user_id}: {e}", line_num=0)
         return {"intent": "DESPEDIDA", "partial": "¡Adiós!"}
 
 @app.get("/health")
