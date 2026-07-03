@@ -6,6 +6,7 @@ import httpx
 import websockets
 import json
 import datetime
+import concurrent.futures
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -13,26 +14,28 @@ if sys.platform.startswith("win"):
 from fastapi import FastAPI
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from llama_cpp import Llama
-import concurrent.futures
+from huggingface_hub import InferenceClient
 
-INFERENCE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+system = platform.system()
+sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
+from app.utils.paths import data_path
+
+# ============================================================
+# CONFIGURACIÓN
+# ============================================================
+LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
+MODEL_PATH     = data_path("Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf")
+LLM_MODE       = os.getenv("LLM_MODE", "online")
+# Soporta tanto HF_TOKEN (nombre oficial HuggingFace) como HF_API_KEY (alias heredado)
+HF_TOKEN       = os.getenv("HF_TOKEN") or os.getenv("HF_API_KEY", "")
+
+# llama_cpp y INFERENCE_EXECUTOR se inicializan lazy solo en modo local
+mistral_model    = None
+hf_client        = None
+INFERENCE_EXECUTOR = None
 
 class SynthesisRequest(BaseModel):
     partials: list[dict]
-    
-# CONFIGURACIONES
-mistral_model = None
-hf_client = None
-system = platform.system()    
-LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
-import sys
-sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
-from app.utils.paths import data_path
-MODEL_PATH = data_path("Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf")
-
-LLM_MODE = os.getenv("LLM_MODE", "online")
-HF_API_KEY = os.getenv("HF_API_KEY", "")
 
 # ============================================================
 # LOGGING AL LOGGING_SERVICE
@@ -58,14 +61,15 @@ async def log_to_logging_service(level: str, msg: str, status_flag="SOLUCIONADO"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global mistral_model, hf_client
-    system = platform.system()
+    global mistral_model, hf_client, INFERENCE_EXECUTOR
     
     await log_to_logging_service("INFO", "Iniciando Mistral Service para consolidar multi-intenciones", line_num=47)
 
     if LLM_MODE == "local":
-        print(f"Cargando modelo de propósito general Mistral desde: {MODEL_PATH}")
+        print(f"[Modo Local] Cargando modelo Qwen GGUF desde: {MODEL_PATH}")
         try:
+            from llama_cpp import Llama  # Import lazy: solo en modo local
+            INFERENCE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1)
             mistral_model = Llama(
                 model_path=MODEL_PATH,
                 n_ctx=4096,
@@ -77,14 +81,14 @@ async def lifespan(app: FastAPI):
                 rope_freq_scale=1.0,
                 verbose=True
             )
-            await log_to_logging_service("INFO", f"Modelo Mistral GGUF cargado exitosamente", line_num=64)
+            await log_to_logging_service("INFO", f"Modelo Qwen GGUF cargado exitosamente", line_num=64)
         except Exception as e:
-            await log_to_logging_service("ERROR", f"Fallo al cargar Mistral: {e}", line_num=66)
+            await log_to_logging_service("ERROR", f"Fallo al cargar modelo Qwen GGUF: {e}", line_num=66)
     else:
-        await log_to_logging_service("INFO", "Iniciando cliente HuggingFace (Online Mode)", line_num=0)
+        await log_to_logging_service("INFO", "Iniciando cliente HuggingFace Serverless (Modo Online) → Qwen/Qwen2.5-7B-Instruct", line_num=0)
         try:
-            from huggingface_hub import InferenceClient
-            hf_client = InferenceClient(token=HF_API_KEY or None)
+            hf_client = InferenceClient(token=HF_TOKEN or None)
+            await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient listo.", line_num=0)
         except Exception as e:
             await log_to_logging_service("ERROR", f"Fallo al cargar el cliente HF: {e}", line_num=0)
 

@@ -1,28 +1,23 @@
-version: "3.9"
+﻿version: "3.9"
 
 services:
   intent_service:
+    image: ghcr.io/${GHCR_OWNER}/intent_service:latest
+    container_name: intent_service
     build:
       context: .
       dockerfile: intent_service/Dockerfile
-    image: hellen-intent
-    container_name: intent_service
     ports:
       - "9010:9010"
     environment:
-      # 👇 Credenciales para el modelo Qwen en línea
-      - HF_API_KEY=${HF_API_KEY}
-      # 👇 Credenciales para los modelos oficiales de Mistral AI
-      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
-      - MISTRAL_URL=${MISTRAL_URL}
-      - MISTRAL_URL_MODEL=${MISTRAL_URL_MODEL}
-      - MISTRAL_MODEL_NAME=${MISTRAL_MODEL_NAME}
-      - MISTRAL_ORGANIZATION=${MISTRAL_ORGANIZATION}
-      - MISTRAL_ORGANIZATION_ID=${MISTRAL_ORGANIZATION_ID}
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
       - ./app:/app/app
     networks:
       - hellen_network
+    restart: unless-stopped
 
 networks:
   hellen_network:

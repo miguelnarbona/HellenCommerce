@@ -1,4 +1,10 @@
-version: '3.8'
+version: '3.9'
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   # ============================================================
@@ -9,29 +15,46 @@ services:
       context: .
       dockerfile: fastapi_service/Dockerfile
     ports:
-      - "8000:8000"
+      - "8080:8080"
     environment:
-      - SQLITE_PATH=/app/data/app.db
-      - PROMPTS_PATH=/app/prompts
-      - RESOURCES_PATH=/app/resources
-      - INTENT_SERVICE_URL=http://intent_service:8002
-      - WORKER_SERVICE_URL=http://worker_service:8003
-      - MISTRAL_SERVICE_URL=http://mistral_service:8004
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SQLITE_PATH=/sqlite/hellencommerce.db
+      - INTENT_SERVICE_URL=http://intent_service:9010
+      - WORKER_SERVICE_URL=http://worker_service:9000
+      - MISTRAL_SERVICE_URL=http://mistral_service:9001
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
-      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
-      - CLAUDE_WEBHOOK_URL=${CLAUDE_WEBHOOK_URL:-}
+      - QDRANT_HOST=qdrant_service
+      - QDRANT_PORT=6333
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
     volumes:
-      - ./app/data:/app/data
+      - ./app:/app/app
       - ./app/prompts:/app/prompts
-      - ./app/resources:/app/resources
+      - ./data/sqlite_store:/sqlite
     depends_on:
-      - intent_service
-      - worker_service
-      - mistral_service
-      - logging_service
+      intent_service:
+        condition: service_healthy
+      worker_service:
+        condition: service_healthy
+      mistral_service:
+        condition: service_healthy
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # ============================================================
   # INTENT SERVICE - Detección de intenciones
@@ -41,40 +64,70 @@ services:
       context: .
       dockerfile: intent_service/Dockerfile
     ports:
-      - "8002:8002"
+      - "9010:9010"
     environment:
-      - INTENT_MODEL_PATH=/app/models/intent_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
-      - ./app/resources:/app/resources:ro
+      - ./app:/app/app
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9010/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # ============================================================
-  # WORKER SERVICE - Generador de prompts
+  # WORKER SERVICE - Generador de prompts y embeddings (Qdrant)
   # ============================================================
   worker_service:
     build:
       context: .
       dockerfile: worker_service/Dockerfile
     ports:
-      - "8003:8003"
+      - "9000:9000"
     environment:
-      - SQLITE_PATH=/app/data/app.db
-      - PROMPTS_PATH=/app/prompts
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SQLITE_PATH=/sqlite/hellencommerce.db
+      - QDRANT_HOST=qdrant_service
+      - QDRANT_PORT=6333
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
     volumes:
-      - ./app/data:/app/data
-      - ./app/prompts:/app/prompts:ro
+      - ./app:/app/app
+      - ./app/prompts:/app/prompts
+      - ./data/sqlite_store:/sqlite
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # ============================================================
   # MISTRAL SERVICE - Unificador de respuestas
@@ -84,17 +137,30 @@ services:
       context: .
       dockerfile: mistral_service/Dockerfile
     ports:
-      - "8004:8004"
+      - "9001:9001"
     environment:
-      - MISTRAL_MODEL_PATH=/app/models/mistral.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
+      - ./app:/app/app
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # ============================================================
   # LOGGING SERVICE - Subsistema de Logs y Self-Healing
@@ -106,16 +172,30 @@ services:
     ports:
       - "8099:8099"
     environment:
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGS_DB_PATH=/app/logs/hellen_logs.db
       - EXTERNAL_LLM_URL=${EXTERNAL_LLM_URL:-https://api.anthropic.com/v1/messages}
       - EXTERNAL_LLM_KEY=${EXTERNAL_LLM_KEY:-}
       - EXTERNAL_LLM_MODEL=${EXTERNAL_LLM_MODEL:-claude-3-5-sonnet-20241022}
       - ADMIN_NOTIFY_WEBHOOK=${ADMIN_NOTIFY_WEBHOOK:-}
     volumes:
-      - ./app/logs:/app/logs
+      - ./app:/app/app
+      - ./data/logs:/app/logs
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8099/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ============================================================
   # ADMIN DASHBOARD - Panel de administración
@@ -129,274 +209,465 @@ services:
     environment:
       - LOGGING_API_URL=http://logging_service:8099
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ============================================================
-  # SERVICIOS ESPECIALIZADOS POR CATEGORÍA
+  # SERVICIOS ESPECIALIZADOS POR CATEGORÍA (IMAGEN UNIFICADA)
   # ============================================================
   
   registro_service:
-    build:
-      context: .
-      dockerfile: services/registro_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: registro_service
     ports:
       - "8010:8010"
     environment:
-      - REGISTRO_MODEL_PATH=/app/models/registro_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=registro_service
+      - SERVICE_PORT=8010
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   contacto_service:
-    build:
-      context: .
-      dockerfile: services/contacto_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: contacto_service
     ports:
       - "8011:8011"
     environment:
-      - CONTACTO_MODEL_PATH=/app/models/contacto_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=contacto_service
+      - SERVICE_PORT=8011
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8011/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   mensajeria_service:
-    build:
-      context: .
-      dockerfile: services/mensajeria_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: mensajeria_service
     ports:
       - "8012:8012"
     environment:
-      - MENSAJERIA_MODEL_PATH=/app/models/mensajeria_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=mensajeria_service
+      - SERVICE_PORT=8012
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8012/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   venta_service:
-    build:
-      context: .
-      dockerfile: services/venta_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: venta_service
     ports:
       - "8013:8013"
     environment:
-      - VENTA_MODEL_PATH=/app/models/venta_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=venta_service
+      - SERVICE_PORT=8013
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8013/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   compra_service:
-    build:
-      context: .
-      dockerfile: services/compra_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: compra_service
     ports:
       - "8014:8014"
     environment:
-      - COMPRA_MODEL_PATH=/app/models/compra_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=compra_service
+      - SERVICE_PORT=8014
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8014/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   informativa_service:
-    build:
-      context: .
-      dockerfile: services/informativa_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: informativa_service
     ports:
       - "8015:8015"
     environment:
-      - INFORMATIVA_MODEL_PATH=/app/models/informativa_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=informativa_service
+      - SERVICE_PORT=8015
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8015/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   notificacion_service:
-    build:
-      context: .
-      dockerfile: services/notificacion_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: notificacion_service
     ports:
       - "8016:8016"
     environment:
-      - NOTIFICACION_MODEL_PATH=/app/models/notificacion_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=notificacion_service
+      - SERVICE_PORT=8016
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8016/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   transporte_service:
-    build:
-      context: .
-      dockerfile: services/transporte_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: transporte_service
     ports:
       - "8017:8017"
     environment:
-      - TRANSPORTE_MODEL_PATH=/app/models/transporte_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=transporte_service
+      - SERVICE_PORT=8017
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8017/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   saludo_service:
-    build:
-      context: .
-      dockerfile: services/saludo_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: saludo_service
     ports:
       - "8018:8018"
     environment:
-      - SALUDO_MODEL_PATH=/app/models/saludo_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=saludo_service
+      - SERVICE_PORT=8018
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
-    volumes:
-      - ./app/models:/app/models:ro
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8018/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   despedida_service:
-    build:
-      context: .
-      dockerfile: services/despedida_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: despedida_service
     ports:
       - "8019:8019"
     environment:
-      - DESPEDIDA_MODEL_PATH=/app/models/despedida_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=despedida_service
+      - SERVICE_PORT=8019
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
-    volumes:
-      - ./app/models:/app/models:ro
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8019/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   ruta_service:
-    build:
-      context: .
-      dockerfile: services/ruta_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: ruta_service
     ports:
       - "8020:8020"
     environment:
-      - RUTA_MODEL_PATH=/app/models/ruta_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=ruta_service
+      - SERVICE_PORT=8020
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8020/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   negocio_service:
-    build:
-      context: .
-      dockerfile: services/negocio_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: negocio_service
     ports:
       - "8021:8021"
     environment:
-      - NEGOCIO_MODEL_PATH=/app/models/negocio_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=negocio_service
+      - SERVICE_PORT=8021
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8021/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   servicio_service:
-    build:
-      context: .
-      dockerfile: services/servicio_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: servicio_service
     ports:
       - "8022:8022"
     environment:
-      - SERVICIO_MODEL_PATH=/app/models/servicio_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=servicio_service
+      - SERVICE_PORT=8022
       - SQLITE_PATH=/app/data/app.db
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ./app/models:/app/models:ro
       - ./app/data:/app/data
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8022/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   otra_service:
-    build:
-      context: .
-      dockerfile: services/otra_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/secondary_services:latest
+    container_name: otra_service
     ports:
       - "8023:8023"
     environment:
-      - OTRA_MODEL_PATH=/app/models/otra_model.gguf
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - SERVICE_NAME=otra_service
+      - SERVICE_PORT=8023
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
-    volumes:
-      - ./app/models:/app/models:ro
     depends_on:
-      - logging_service
+      logging_service:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - hellen_network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8023/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 # ============================================================
 # REDES

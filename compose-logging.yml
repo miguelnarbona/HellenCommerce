@@ -1,27 +1,30 @@
-﻿version: '3.8'
+﻿version: "3.9"
 
 services:
   logging_service:
-    build:
-      context: ..
-      dockerfile: logging_service/Dockerfile
+    image: ghcr.io/${GHCR_OWNER}/logging_service:latest
     container_name: logging_service
+    build:
+      context: .
+      dockerfile: logging_service/Dockerfile
     ports:
       - "8099:8099"
     environment:
-      # 👇 Actualizado para consumir el modelo Qwen 72B en línea a través de Hugging Face
-      - HF_API_KEY=${HF_API_KEY}
-      - MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      # Variables legacy de Anthropic (modo local Ãºnicamente)
+      - EXTERNAL_LLM_URL=${EXTERNAL_LLM_URL:-https://api.anthropic.com/v1/messages}
+      - EXTERNAL_LLM_KEY=${EXTERNAL_LLM_KEY:-}
+      - EXTERNAL_LLM_MODEL=${EXTERNAL_LLM_MODEL:-claude-3-5-sonnet-20241022}
+      - ADMIN_NOTIFY_WEBHOOK=${ADMIN_NOTIFY_WEBHOOK:-}
       - LOGS_DB_PATH=/app/logs/hellen_logs.db
     volumes:
-      - ../app:/app/shared
-      - .:/app/logging_service
-      # 👇 Es recomendable añadir persistencia para tu base de datos de logs SQLite
-      - ./logs:/app/logs
+      - ./app:/app/app
+      - ./data/logs:/app/logs
     networks:
       - hellen_network
+    restart: unless-stopped
 
 networks:
   hellen_network:
-    name: hellen_network
     external: true

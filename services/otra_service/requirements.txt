@@ -1,6 +1,0 @@
-﻿fastapi
-uvicorn[standard]
-pydantic
-websockets
-httpx
-llama-cpp-python==0.2.11

@@ -1,49 +1,29 @@
-FROM mirror.gcr.io/library/python:3.11-slim
+﻿FROM python:3.11-slim
 
 WORKDIR /app
 
-# Forzar IPv4 para evitar timeouts en redes inestables
-RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+# Variables de entorno para pip y Python
+ENV PIP_DEFAULT_TIMEOUT=300 \
+    PIP_RETRIES=10 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
 
-# Cambiar mirrors a uno más estable (USA)
-# RUN sed -i 's|deb.debian.org|ftp.us.debian.org|g' /etc/apt/sources.list
+# ConfiguraciÃ³n del servicio (override vÃ­a docker-compose)
+ENV LLM_MODE=online \
+    HF_API_KEY=""
 
-# Instalar dependencias del sistema con reintentos (llama.cpp necesita build-essential)
-RUN for i in 1 2 3 4 5; do \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-        build-essential \
-        ca-certificates \
-        curl \
-    && update-ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && break || sleep 10; \
-done
+# Copiar requirements primero (cache layer)
+COPY mistral_service/requirements.txt /app/requirements.txt
 
-# Configuración de pip
-RUN pip config set global.index-url https://pypi.org/simple
-RUN pip config set global.timeout 300
-RUN pip config set global.retries 10
+RUN pip install -r requirements.txt
 
-COPY requirements.txt /app/requirements.txt
+# Copiar el cÃ³digo del servicio
+COPY mistral_service/main.py /app/main.py
 
-ENV PIP_DEFAULT_TIMEOUT=2000
-ENV PIP_RETRIES=50
-ENV PIP_NO_CACHE_DIR=1
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# Instalar dependencias Python con reintentos
-RUN for i in 1 2 3 4 5; do \
-    pip install --default-timeout=2000 --retries=50 --no-cache-dir -r requirements.txt \
-    && break || sleep 10; \
-done
-
-COPY main.py /app/main.py
-
-# El modelo se montará como volumen en /models
-ENV MODEL_PATH=/models/mistral/phi-2-instruct.Q4_K_S/phi-2-instruct.Q4_K_S.gguf
-ENV N_CTX=1024
-ENV N_THREADS=6
+# Copiar carpetas compartidas del proyecto
+COPY app /app/app
 
 EXPOSE 9001
 

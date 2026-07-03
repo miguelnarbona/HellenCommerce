@@ -13,7 +13,7 @@ En la raíz de mi proyecto `c:\HellenCommerce\`, cuento con tres servicios prima
 3. **`mistral_service`**: Unifica y procesa respuestas consumiendo localmente el modelo `qwen2.5-3b-instruct-q4_k_m.gguf`.
 
 # OBJETIVO DEL PROMPT
-Refactorizar y modificar EXCLUSIVAMENTE estos tres servicios primarios para que migren a sus versiones **Online Gratuitas** (Serverless). Al igual que hicimos con los servicios secundarios, el sistema debe quedar configurado en un formato dual utilizando condicionales `if/else` controlados por una variable de entorno (`LLM_MODE = os.getenv("LLM_MODE", "online")`), permitiendo alternar entre el flujo local heredado y el nuevo motor serverless en la nube sin alterar las firmas, nombres ni datos de retorno esperados por el Orquestador central.
+Refactorizar y modificar EXCLUSIVAMENTE estos tres servicios primarios para que sean refactorizados o migren a sus versiones **Online Gratuitas** (Serverless). Al igual que hicimos con los servicios secundarios, el sistema debe quedar configurado en un formato dual utilizando condicionales `if/else` controlados por una variable de entorno (`LLM_MODE = os.getenv("LLM_MODE", "online")`), permitiendo alternar entre el flujo local heredado y el nuevo motor serverless en la nube sin alterar las firmas, nombres ni datos de retorno esperados por el Orquestador central.
 
 # REQUERIMIENTOS ESTRICTOS DE REFACTORIZACIÓN
 Procesa las siguientes directrices técnicas delimitadas en etiquetas XML para construir tu respuesta:

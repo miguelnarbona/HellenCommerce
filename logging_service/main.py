@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import sys
 import json
 import logging
@@ -12,6 +13,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
+from huggingface_hub import InferenceClient
 
 # Cross-platform paths
 system = platform.system()
@@ -29,11 +31,10 @@ EXTERNAL_LLM_KEY    = os.getenv("EXTERNAL_LLM_KEY",    "")
 EXTERNAL_LLM_MODEL  = os.getenv("EXTERNAL_LLM_MODEL",  "claude-3-5-sonnet-20241022")
 ADMIN_NOTIFY_WEBHOOK= os.getenv("ADMIN_NOTIFY_WEBHOOK", "")   # Slack / N8N / etc.
 
-system = platform.system()
 LOGS_DB_PATH = os.getenv("LOGS_DB_PATH", data_path("logs/hellen_logs.db"))
-
-LLM_MODE = os.getenv("LLM_MODE", "online")
-HF_API_KEY = os.getenv("HF_API_KEY", "")
+LLM_MODE     = os.getenv("LLM_MODE", "online")
+# Soporta tanto HF_TOKEN (nombre oficial HuggingFace) como HF_API_KEY (alias heredado)
+HF_TOKEN     = os.getenv("HF_TOKEN") or os.getenv("HF_API_KEY", "")
 
 # ============================================================
 # BASE DE DATOS DE LOGS (SQLite)
@@ -201,7 +202,6 @@ async def call_external_llm(error_desc: str, code_snippet: str, source_file: str
                 resp = await client.post(EXTERNAL_LLM_URL, headers=headers, json=body)
                 data = resp.json()
                 content = data.get("content", [{}])[0].get("text", "")
-                import re
                 match = re.search(r"```python(.*?)```", content, re.DOTALL)
                 if match:
                     return match.group(1).strip()
@@ -209,10 +209,9 @@ async def call_external_llm(error_desc: str, code_snippet: str, source_file: str
         except Exception as e:
             return f"# [Hot-Fix Error] Fallo al contactar LLM externo: {e}"
     else:
-        # Fallback táctico a coste cero con HuggingFace
+        # Fallback táctico a coste cero con HuggingFace Serverless
         try:
-            from huggingface_hub import InferenceClient
-            hf_client = InferenceClient(token=HF_API_KEY or None)
+            hf_client = InferenceClient(token=HF_TOKEN or None)
             
             def call_hf():
                 response = hf_client.chat_completion(
@@ -227,7 +226,6 @@ async def call_external_llm(error_desc: str, code_snippet: str, source_file: str
                 return response.choices[0].message.content.strip()
 
             content = await asyncio.to_thread(call_hf)
-            import re
             match = re.search(r"```python(.*?)```", content, re.DOTALL)
             if match:
                 return match.group(1).strip()

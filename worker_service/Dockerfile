@@ -1,67 +1,55 @@
-# ==========================================
+﻿# ==========================================
 # ETAPA 1: Constructor (Build Stage)
 # ==========================================
-FROM mirror.gcr.io/library/python:3.11-slim AS builder
+FROM python:3.11-slim AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
-
-RUN for i in 1 2 3 4 5; do \
-        apt-get update && \
-        apt-get install -y --no-install-recommends \
-            build-essential \
-            cmake \
-            libopenblas-dev \
-            libomp-dev \
-            libssl-dev \
-            libffi-dev \
-            rustc \
-            cargo \
-        && break || (echo "Reintentando apt en 10s..." && sleep 10); \
-    done \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        libopenblas-dev \
+        libomp-dev \
+        libssl-dev \
+        libffi-dev \
+        rustc \
+        cargo \
     && rm -rf /var/lib/apt/lists/*
 
-# 🛠️ CORRECCIÓN: Se eliminó PIP_INDEX_URL para que use el mirror nativo de Google sin forzar PyPI
-ENV PIP_DEFAULT_TIMEOUT=2000 \
-    PIP_RETRIES=50 \
+ENV PIP_DEFAULT_TIMEOUT=300 \
+    PIP_RETRIES=10 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
-COPY worker_service/requirements.txt .
+COPY worker_service/requirements.txt ./requirements.txt
 
-# 🛠️ CORRECCIÓN: Aseguramos la instalación en la ruta que la Etapa 2 va a buscar
-RUN for i in 1 2 3 4 5; do \
-        pip install --user -r requirements.txt \
-        && break || (echo "Reintentando pip en 10s..." && sleep 10); \
-    done
+RUN pip install --user -r requirements.txt
 
 # ==========================================
-# ETAPA 2: Imagen Final de Producción (Runtime)
+# ETAPA 2: Imagen Final de ProducciÃ³n (Runtime)
 # ==========================================
-FROM mirror.gcr.io/library/python:3.11-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
-    PATH=/root/.local/bin:$PATH
+    PATH=/root/.local/bin:$PATH \
+    LLM_MODE=online \
+    HF_API_KEY=""
 
-RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 \
-    && apt-get update && apt-get install -y --no-install-recommends \
+# Bibliotecas de runtime para sentence-transformers/chromadb
+RUN apt-get update && apt-get install -y --no-install-recommends \
         libopenblas-dev \
         libomp-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Traer las dependencias compiladas de Python desde el builder
+# Traer las dependencias compiladas desde el builder
 COPY --from=builder /root/.local /root/.local
 
-# Copia los archivos del servicio desde la raíz del proyecto
+# Copiar el cÃ³digo del servicio y carpetas compartidas
 COPY worker_service/main.py /app/main.py
-
-# Copia las carpetas compartidas y vecinas
 COPY app /app/app
-COPY app/config /app/config
 
 EXPOSE 9000
 

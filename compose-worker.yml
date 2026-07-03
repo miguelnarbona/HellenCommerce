@@ -1,31 +1,32 @@
-version: "3.9"
+﻿version: "3.9"
 
 services:
   worker_service:
+    image: ghcr.io/${GHCR_OWNER}/worker_service:latest
+    container_name: worker_service
     build:
       context: .
       dockerfile: worker_service/Dockerfile
-    image: hellen-worker
-    container_name: worker_service
     ports:
       - "9000:9000"
     environment:
-      - HF_API_KEY=${HF_API_KEY}
-      - EMBEDDINGS_PATH=/models/minilm/all-MiniLM-L6-v2
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - QDRANT_HOST=qdrant_service
+      - QDRANT_PORT=6333
       - SQLITE_PATH=/sqlite/hellencommerce.db
-      - CHROMA_HOST=chromadb_service
-      - CHROMA_PORT=8000
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883
     volumes:
       - ./app:/app/app
       - ./app/prompts:/app/prompts
-      - ./config:/app/config
-      - /mnt/c/HellenData/sqlite_store:/sqlite
-      - /mnt/c/HellenData/mistral:/models/mistral
-      - /mnt/c/HellenData/minilm:/models/minilm
+      - ./data/sqlite_store:/sqlite
+      # VolÃºmenes de modelos locales (solo necesarios si LLM_MODE=local)
+      # - /mnt/data/HellenData/minilm:/models/minilm
     networks:
       - hellen_network
+    restart: unless-stopped
 
 networks:
   hellen_network:

@@ -18,53 +18,45 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # --- SERVICIOS EN LA RAÍZ ---
+          # -------------------------------------------------------
+          # SERVICIOS PRIMARIOS (contexto raíz: necesitan app/ compartido)
+          # -------------------------------------------------------
           - name: fastapi_service
-            context: ./fastapi_service
+            context: .
+            file: ./fastapi_service/Dockerfile
+
           - name: intent_service
-            context: ./intent_service
+            context: .
+            file: ./intent_service/Dockerfile
+
           - name: logging_service
-            context: ./logging_service
-          - name: map_service
-            context: ./map_service
+            context: .
+            file: ./logging_service/Dockerfile
+
           - name: mistral_service
-            context: ./mistral_service
-          
-          # 💡 SOLUCIÓN DEFINITIVA PARA WORKER
+            context: .
+            file: ./mistral_service/Dockerfile
+
           - name: worker_service
             context: .
             file: ./worker_service/Dockerfile
 
-          # --- SERVICIOS EN LA CARPETA /SERVICES ---
-          - name: compra_service
-            context: ./services/compra_service
-          - name: contacto_service
-            context: ./services/contacto_service
-          - name: despedida_service
-            context: ./services/despedida_service
-          - name: informativa_service
-            context: ./services/informativa_service
-          - name: mensajeria_service
-            context: ./services/mensajeria_service
-          - name: negocio_service
-            context: ./services/negocio_service
-          - name: notificacion_service
-            context: ./services/notificacion_service
-          - name: otra_service
-            context: ./services/otra_service
-          - name: registro_service
-            context: ./services/registro_service
-          - name: saludo_service
-            context: ./services/saludo_service
-          - name: servicio_service
-            context: ./services/servicio_service
-          - name: transporte_service
-            context: ./services/transporte_service
-          - name: venta_service
-            context: ./services/venta_service
+          # -------------------------------------------------------
+          # SERVICIO DE MAPA (contexto propio: no necesita app/ compartido)
+          # -------------------------------------------------------
+          - name: map_service
+            context: ./map_service
+            file: ./map_service/Dockerfile
+
+          # -------------------------------------------------------
+          # SERVICIOS SECUNDARIOS (1 Sola Imagen Unificada)
+          # -------------------------------------------------------
+          - name: secondary_services
+            context: .
+            file: ./services/Dockerfile
 
     steps:
-      # PASO 1: Maximizar el espacio en disco eliminando software innecesario de GitHub
+      # PASO 1: Liberar espacio en disco del runner de GitHub
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
@@ -73,16 +65,16 @@ jobs:
           dotnet: true
           haskell: true
           large-packages: true
-          docker-images: false # Deja esto en false para no romper buildx
+          docker-images: false  # false para no romper buildx
 
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Configurar emulador QEMU (Esencial para compilar ARM64 desde servidores AMD de GitHub)
+      # PASO 2: QEMU para compilación ARM64 desde runners AMD64 de GitHub
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # 3. Configurar Docker Buildx para habilitar compilación avanzada
+      # PASO 3: Docker Buildx para builds multi-arquitectura
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -90,35 +82,37 @@ jobs:
         id: repo_owner
         run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
 
-      - name: Log in to the Container registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 4. Compilar usando Matrix para múltiples arquitecturas simultáneamente
-      - name: Build and push service
+      # PASO 4: Build multi-arch y push a GHCR
+      - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           push: true
-          # Habilita la compatibilidad híbrida para tu entorno local (amd64) y tu Oracle Ampere (arm64)
           platforms: linux/amd64,linux/arm64
-          # Corrige de manera definitiva el bug visual de la columna "OS/Arch" en GitHub
-          provenance: false
+          provenance: false   # Evita el bug visual de OS/Arch en GHCR
           tags: |
             ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.name }}:latest
             ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # ----------------------------------------------------------------
+  # JOB 2: Notificar y desplegar en Oracle Cloud vía webhook
+  # ----------------------------------------------------------------
   auto-deploy:
-    needs: build-and-push # Espera obligatoriamente a que terminen de compilar con éxito las imágenes
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Notificar y desplegar en Oracle Cloud
         continue-on-error: true
         run: |
-          curl -X POST http://${{ secrets.ORACLE_SERVER_IP }}:10001/hooks/deploy-hellen-commerce
+          curl -fsS -X POST http://${{ secrets.ORACLE_SERVER_IP }}:10001/hooks/deploy-hellen-commerce \
+            --max-time 30 || echo "⚠️ Webhook de deploy no disponible, continuando..."

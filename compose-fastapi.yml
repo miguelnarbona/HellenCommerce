@@ -1,22 +1,21 @@
-version: "3.9"
+﻿version: "3.9"
 
 services:
   fastapi_service:
-    build:
-      context: ./fastapi_service
-    image: hellen-fastapi
+    image: ghcr.io/${GHCR_OWNER}/fastapi_service:latest
     container_name: fastapi_service
+    build:
+      context: .
+      dockerfile: fastapi_service/Dockerfile
     ports:
       - "8080:8080"
     environment:
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - APP_SERVICE_URL=http://worker_service:9000
-      - HF_API_KEY=${HF_API_KEY}
-      - MISTRAL_API_KEY=${MISTRAL_API_KEY} # API Key para el modelo online de Mistral
-      - MISTRAL_URL=${MISTRAL_URL} # Endpoint oficial online (o el de Hugging Face según usemos)
-      - MISTRAL_URL_MODEL=${MISTRAL_URL_MODEL}
-      - MISTRAL_MODEL_NAME=${MISTRAL_MODEL_NAME}
-      - MISTRAL_ORGANIZATION=${MISTRAL_ORGANIZATION}
-      - MISTRAL_ORGANIZATION_ID=${MISTRAL_ORGANIZATION_ID}
+      - INTENT_SERVICE_URL=http://intent_service:9010
+      - MISTRAL_SERVICE_URL=http://mistral_service:9001
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
       - SQLITE_PATH=/sqlite/hellencommerce.db
       - QDRANT_HOST=qdrant_service
       - QDRANT_PORT=6333
@@ -25,10 +24,10 @@ services:
     volumes:
       - ./app:/app/app
       - ./app/prompts:/app/prompts
-      - ./config:/app/config
-      - ./data/sqlite_store:/sqlite # Solo mantenemos el volumen de la base de datos local
+      - ./data/sqlite_store:/sqlite
     networks:
       - hellen_network
+    restart: unless-stopped
 
 networks:
   hellen_network:

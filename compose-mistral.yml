@@ -1,20 +1,27 @@
-version: "3.9"
+﻿version: "3.9"
 
 services:
   mistral_service:
-    build:
-      context: ./mistral_service
-    image: hellen-mistral
+    image: ghcr.io/${GHCR_OWNER}/mistral_service:latest
     container_name: mistral_service
+    build:
+      context: .
+      dockerfile: mistral_service/Dockerfile
     ports:
       - "9001:9001"
+    environment:
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
+      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      # Path del modelo GGUF local (solo relevante si LLM_MODE=local)
+      - MODEL_PATH=/models/Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf
     volumes:
-      - ./app/prompts:/app/prompts
-      - /mnt/c/HellenData/mistral:/models/mistral
+      - ./app:/app/app
+      # Volumen de modelos locales (opcional, solo en modo local)
+      # - /mnt/data/HellenData/Qwen:/models/Qwen
     networks:
       - hellen_network
-    mem_limit: 6g
-    cpus: 6
+    restart: unless-stopped
 
 networks:
   hellen_network:

@@ -16,7 +16,7 @@ if sys.platform.startswith("win"):
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
-from llama_cpp import Llama
+# llama_cpp se importa de forma lazy solo en modo local para no romper entornos cloud
 
 # Motor semántico interno
 from intent_service.intent_semantic import detectar_intencion_semantica
@@ -32,7 +32,8 @@ BASE_RES = hc_path("app/resources")
 MODEL_PATH_ULT = data_path("mistral/mistral-7b-instruct-v0.2.Q4_K_M/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
 
 LLM_MODE = os.getenv("LLM_MODE", "online")
-HF_API_KEY = os.getenv("HF_API_KEY", "")
+# Soporta tanto HF_TOKEN (nombre oficial HuggingFace) como HF_API_KEY (alias heredado)
+HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HF_API_KEY", "")
 
 KEYWORDS_FILES = {
     "COMPRA": "keywords_buy.txt",
@@ -128,6 +129,7 @@ async def lifespan(app: FastAPI):
     if LLM_MODE == "local":
         await log_to_logging_service("INFO", "Bootstrapping intent_service: Iniciando carga de modelo GGUF (Modo Local)", line_num=0)
         try:
+            from llama_cpp import Llama  # Import lazy: solo en modo local
             intent_llm = Llama(
                 model_path=MODEL_PATH_ULT,
                 n_ctx=1500,
@@ -141,9 +143,10 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             await log_to_logging_service("ERROR", f"Fallo al cargar el modelo GGUF: {e}", line_num=0)
     else:
-        await log_to_logging_service("INFO", "Bootstrapping intent_service: Iniciando cliente HF (Modo Online)", line_num=0)
+        await log_to_logging_service("INFO", "Bootstrapping intent_service: Iniciando cliente HF Serverless (Modo Online)", line_num=0)
         try:
-            hf_client = InferenceClient(token=HF_API_KEY or None)
+            hf_client = InferenceClient(token=HF_TOKEN or None)
+            await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient inicializado → mistralai/Mistral-7B-Instruct-v0.2", line_num=0)
         except Exception as e:
             await log_to_logging_service("ERROR", f"Fallo al cargar cliente HF: {e}", line_num=0)
 
