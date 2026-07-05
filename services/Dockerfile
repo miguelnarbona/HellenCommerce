@@ -21,6 +21,8 @@ ENV LLM_MODE=online \
     SERVICE_NAME="compra_service" \
     SERVICE_PORT="8014"
 
+LABEL org.opencontainers.image.source=https://github.com
+
 # Copiar e instalar dependencias unificadas
 COPY services/requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt

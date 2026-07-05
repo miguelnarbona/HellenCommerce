@@ -38,6 +38,8 @@ ENV PYTHONUNBUFFERED=1 \
     LLM_MODE=online \
     HF_API_KEY=""
 
+LABEL org.opencontainers.image.source=https://github.com
+
 # Bibliotecas de runtime para sentence-transformers/chromadb
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libopenblas-dev \

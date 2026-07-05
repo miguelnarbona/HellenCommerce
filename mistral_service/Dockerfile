@@ -14,6 +14,8 @@ ENV PIP_DEFAULT_TIMEOUT=300 \
 ENV LLM_MODE=online \
     HF_API_KEY=""
 
+LABEL org.opencontainers.image.source=https://github.com
+
 # Copiar requirements primero (cache layer)
 COPY mistral_service/requirements.txt /app/requirements.txt
 
