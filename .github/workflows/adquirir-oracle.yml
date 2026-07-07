@@ -1,0 +1,122 @@
+name: 🚀 Adquisición Continua de Oracle Free Tier
+
+on:
+  workflow_dispatch: # Permite activarlo manualmente desde la pestaña Actions
+  repository_dispatch:
+    types: [retrigger-oracle-loop] # Permite que el pipeline se llame a sí mismo
+
+jobs:
+  buscar-instancia:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Configurar la herramienta CLI de Oracle (OCI)
+      - name: Configurar Oracle Cloud CLI
+        uses: oracle-actions/setup-oci@v1
+        with:
+          user_ocid: ${{ secrets.OCI_USER_OCID }}
+          tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
+          fingerprint: ${{ secrets.OCI_FINGERPRINT }}
+          region: ${{ secrets.OCI_REGION }}
+          private_key: ${{ secrets.OCI_KEY_CONTENT }}
+
+      # 2. Ejecutar el Script de Bucle de Adquisición
+      - name: Ejecutar script de peticiones concurrentes
+        id: oci-loop
+        run: |
+          TENANCY_ID="${{ secrets.OCI_TENANCY_OCID }}"
+          
+          echo "=== FASE 1: DESPLIEGUE DE RED (NETWORKING) ==="
+          # Verificar si la VCN ya existe para evitar errores en reintentos
+          VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --query "data[0].id" --raw-output 2>/dev/null)
+          
+          if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
+            echo "Creando VCN: vcn-hellencommerce..."
+            VCN_ID=$(oci network vcn create --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --cidr-block "10.0.0.0/16" --query "data.id" --raw-output)
+            
+            echo "Creando Internet Gateway..."
+            IG_ID=$(oci network internet-gateway create --compartment-id "$TENANCY_ID" --display-name "ig-hellencommerce" --is-enabled true --vcn-id "$VCN_ID" --query "data.id" --raw-output)
+            
+            RT_ID=$(oci network vcn get --vcn-id "$VCN_ID" --query "data.\"default-route-table-id\"" --raw-output)
+            echo "Configurando Route Table estática..."
+            oci network route-table update --rt-id "$RT_ID" --route-rules "[{\"cidrBlock\":\"0.0.0.0/0\",\"networkEntityId\":\"$IG_ID\"}]" > /dev/null
+            
+            echo "Creando Subred Pública..."
+            SUBNET_ID=$(oci network subnet create --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --cidr-block "10.0.0.0/24" --route-table-id "$RT_ID" --prohibit-public-ip-on-vnic false --query "data.id" --raw-output)
+          else
+            echo "La infraestructura de red ya existe. Extrayendo IDs..."
+            SUBNET_ID=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --query "data[0].id" --raw-output)
+          fi
+
+          echo "========================================================"
+          echo "=== FASE 2: PREPARACIÓN DE SCRIPT CLOUD-INIT ==="
+          cat << 'EOF' > cloud_init_debian.sh
+          #!/bin/bash
+          sleep 15
+          apt-get update && apt-get dist-upgrade -y && apt-get install -y curl
+          curl -sSL https://githubusercontent.com | bash
+          EOF
+
+          echo "========================================================"
+          echo "=== FASE 3: BUCLE DE ADQUISICIÓN LIMITADO (5.5 HORAS) ==="
+          
+          # Guardamos el tiempo de inicio para no superar el límite de GitHub Actions
+          START_TIME=$(date +%s)
+          AD_NAME=$(oci iam availability-domain list --query "data[0].name" --raw-output)
+          IMAGE_ID=$(oci compute image list --compartment-id "$TENANCY_ID" --operating-system "Canonical Ubuntu" --operating-system-version "24.04 Minimal" --architecture "aarch64" --query "data[0].id" --raw-output)
+
+          while true; do
+            # Si llevamos más de 5 horas y media (19800 segundos), salimos del bucle para autoreiniciar el workflow
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            if [ $ELAPSED -gt 19800 ]; then
+              echo "⏱️ Límite de tiempo del Job cercano. Activando autorelevo..."
+              echo "exito=timeout" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "Consultando disponibilidad en ($AD_NAME)..."
+            RESPONSE=$(oci compute instance launch \
+              --availability-domain "$AD_NAME" \
+              --compartment-id "$TENANCY_ID" \
+              --shape "VM.Standard.A1.Flex" \
+              --shape-config '{"ocpus": 4, "memoryInGBs": 24}' \
+              --boot-volume-size-in-gbs "100" \
+              --is-pv-encryption-in-transit-enabled true \
+              --instance-options '{"areLegacyImdsEndpointsDisabled": true}' \
+              --user-data-file "cloud_init_debian.sh" \
+              --display-name "servidor-bunker-hellencommerce" \
+              --image-id "$IMAGE_ID" \
+              --subnet-id "$SUBNET_ID" \
+              --vnic-display-name "vnic-hellencommerce" \
+              --assign-public-ip true \
+              --generate-public-private-key-pair true 2>/dev/null)
+
+            if [ $? -eq 0 ] && [ ! -z "$RESPONSE" ]; then
+              echo "--------------------------------------------------------"
+              echo "🎉 ¡VICTORIA! Instancia aprovisionada con éxito."
+              echo "--------------------------------------------------------"
+              
+              # Imprimir llaves directamente en el log seguro de GitHub de forma controlada
+              echo "=== COPIA TU LLAVE PRIVADA DESDE LAS SIGUIENTES LÍNEAS ==="
+              echo "$RESPONSE" | oci util server-parsed-json --query "data.\"private-key\"" --raw-output
+              echo "=========================================================="
+              
+              echo "exito=true" >> $GITHUB_OUTPUT
+              rm -f cloud_init_debian.sh
+              exit 0
+            fi
+
+            echo "Servidor lleno (Out of host capacity). Reintentando en 60 segundos..."
+            sleep 60
+          done
+
+      # 3. Paso de Autorelevo: Si el paso anterior salió por tiempo, se vuelve a disparar
+      - name: Relanzar bucle si hubo Timeout
+        if: steps-oci-loop.outputs.exito == 'timeout'
+        run: |
+          echo "Relanzando el flujo debido a restricciones de tiempo en GitHub..."
+          curl -H "Authorization: token ${{ secrets.GH_PAT_RETRIGGER }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               -X POST \
+               -d '{"event_type": "retrigger-oracle-loop"}' \
+               https://github.com{{ github.repository }}/dispatches
