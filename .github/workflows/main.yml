@@ -56,16 +56,23 @@ jobs:
             file: ./services/Dockerfile
 
     steps:
-      # PASO 1: Liberar espacio en disco del runner de GitHub
+      # PASO 1: Liberar espacio en disco usando la acción mantenida por la comunidad
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@v1.3.1
+        uses: easimon/maximize-build-space@v10
         with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false  # false para no romper buildx
+          root-reserve-mb: 5120
+          swap-size-mb: 1024
+          remove-dotnet: true
+          remove-android: true
+          remove-haskell: true
+          remove-codeql: true
+
+      # PASO CLAVE: Forzar el nombre del dueño a minúsculas e inyectarlo en el entorno global del Runner
+      - name: Downcase repository owner
+        run: |
+          echo "IMAGE_OWNER=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: '${{ github.repository_owner }}'
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,10 +85,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Downcase repository owner
-        id: repo_owner
-        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
-
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -89,7 +92,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # PASO 4: Build multi-arch y push a GHCR
+      # PASO 4: Build multi-arch y push a GHCR usando el ENV sanitizado en minúsculas
       - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v6
         with:
@@ -99,8 +102,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           provenance: false   # Evita el bug visual de OS/Arch en GHCR
           tags: |
-            ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.name }}:latest
-            ghcr.io/${{ steps.repo_owner.outputs.owner }}/${{ matrix.name }}:${{ github.sha }}
+            ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -112,7 +115,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notificar y desplegar en Oracle Cloud
-        continue-on-error: true
         run: |
           curl -fsS -X POST http://${{ secrets.ORACLE_SERVER_IP }}:10001/hooks/deploy-hellen-commerce \
             --max-time 30 || echo "⚠️ Webhook de deploy no disponible, continuando..."
