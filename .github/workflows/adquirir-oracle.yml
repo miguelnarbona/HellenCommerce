@@ -1,5 +1,4 @@
 name: "Cazador Oracle Free Tier"
-
 on:
   workflow_dispatch: # Permite activarlo manualmente desde la pestaña Actions
   repository_dispatch:
@@ -12,19 +11,13 @@ jobs:
       # 1. Configurar la herramienta CLI de Oracle (OCI) nativamente
       - name: Instalar y Configurar Oracle Cloud CLI
         run: |
-          # Instalar OCI CLI usando el gestor de paquetes de Python
           pip install oci-cli --upgrade --quiet
-          
-          # Crear la carpeta de configuración oficial de Oracle
           mkdir -p ~/.oci
-          
-          # Escribir la llave privada RSA en un archivo seguro (.pem)
           cat << 'EOF' > ~/.oci/oci_api_key.pem
           ${{ secrets.OCI_KEY_CONTENT }}
           EOF
           chmod 600 ~/.oci/oci_api_key.pem
-          
-          # Generar el archivo de configuración estructurado que requiere la CLI
+
           cat << EOF > ~/.oci/config
           [DEFAULT]
           user=${{ secrets.OCI_USER_OCID }}
@@ -42,17 +35,17 @@ jobs:
           SUPPRESS_LABEL_WARNING: "True"
         run: |
           TENANCY_ID="${{ secrets.OCI_TENANCY_OCID }}"
-          
           echo "=== FASE 1: DESPLIEGUE DE RED (NETWORKING) ==="
+          
           VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --query "data[0].id" --raw-output 2>/dev/null)
           
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
-            echo "No se encontró 'vcn-hellencommerce'. Buscando CUALQUIER VCN disponible en tu cuenta..."
+            echo "No se encontró 'vcn-hellencommerce'. Buscando CUALQUIER VCN disponible..."
             VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --query "data[0].id" --raw-output 2>/dev/null)
           fi
 
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
-            echo "No se encontró ninguna VCN existente. Intentando crear una nueva desde cero..."
+            echo "No se encontró ninguna VCN existente. Creando una nueva..."
             VCN_ID=$(oci network vcn create --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --cidr-block "10.0.0.0/16" --query "data.id" --raw-output)
             IG_ID=$(oci network internet-gateway create --compartment-id "$TENANCY_ID" --display-name "ig-hellencommerce" --is-enabled true --vcn-id "$VCN_ID" --query "data.id" --raw-output)
             RT_ID=$(oci network vcn get --vcn-id "$VCN_ID" --query "data.\"default-route-table-id\"" --raw-output)
@@ -61,17 +54,15 @@ jobs:
           else
             echo "Utilizando VCN existente con ID: [$VCN_ID]"
             SUBNET_ID=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --query "data[0].id" --raw-output 2>/dev/null)
-            
             if [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
-              echo "La VCN no tenía subredes libres. Creando una subred pública inyectada..."
+              echo "Creando subred pública..."
               RT_ID=$(oci network vcn get --vcn-id "$VCN_ID" --query "data.\"default-route-table-id\"" --raw-output)
               SUBNET_ID=$(oci network subnet create --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --cidr-block "10.0.8.0/24" --route-table-id "$RT_ID" --prohibit-public-ip-on-vnic false --query "data.id" --raw-output)
             else
-              echo "Subred pública existente detectada y vinculada con éxito con ID: [$SUBNET_ID]"
+              echo "Subred detectada con ID: [$SUBNET_ID]"
             fi
           fi
 
-          echo "========================================================"
           echo "=== FASE 2: PREPARACIÓN DE SCRIPT CLOUD-INIT ==="
           cat << 'EOF' > cloud_init_debian.sh
           #!/bin/bash
@@ -80,42 +71,35 @@ jobs:
           curl -sSL https://githubusercontent.com | bash
           EOF
 
-          echo "========================================================"
-          echo "=== FASE 3: BUCLE DE ADQUISICIÓN LIMITADO (5.5 HORAS) ==="
-          
+          echo "=== FASE 3: BUCLE DE ADQUISICIÓN LIMITADO ==="
           START_TIME=$(date +%s)
-          
-          echo "Consultando metadatos en la API de Oracle..."
-          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data[0].name" --raw-output)
+          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data[0].name" --raw-output 2>/dev/null)
           IMAGE_ID="ocid1.image.oc1.iad.aaaaaaaasvunhvew6oia6f67kofgbyf4c7cl7jpxlyymhmsaigw2u2q6szqq"
 
-          echo "Dominio de disponibilidad mapeado: [$AD_NAME]"
-          echo "ID de Imagen de SO mapeado: [$IMAGE_ID]"
-          echo "ID de Subred destino mapeado: [$SUBNET_ID]"
-
-          # Validación estricta antes de ingresar al bucle
-          if [[ -z "$AD_NAME" || "$AD_NAME" == *"Error"* || -z "$SUBNET_ID" ]]; then
-            echo "❌ Error Crítico: No se pudo extraer la metadata base o los permisos de OCI son insuficientes."
-            echo "Respuesta del AD: $AD_NAME"
+          if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
+            echo "❌ Error Crítico: Parámetros base vacíos."
             exit 1
           fi
 
           while true; do
             CURRENT_TIME=$(date +%s)
             ELAPSED=$((CURRENT_TIME - START_TIME))
-            if [ $ELAPSED -gt 19800 ]; then
-              echo "⏱️ Límite de tiempo del Job cercano. Activando autorelevo..."
+            
+            if [ $ELAPSED -gt 18000 ]; then # Reducido a 5 horas seguras para evitar cortes abruptos de GH
+              echo "⏱️ Límite de tiempo alcanzado. Activando autorelevo..."
               echo "exito=timeout" >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
             echo "Consultando disponibilidad en ($AD_NAME)..."
+            
+            # Removido el 2>/dev/null para poder capturar el error de sintaxis si existe
             RESPONSE=$(oci compute instance launch \
               --availability-domain "$AD_NAME" \
               --compartment-id "$TENANCY_ID" \
               --shape "VM.Standard.A1.Flex" \
               --shape-config '{"ocpus": 2, "memoryInGBs": 12}' \
-              --boot-volume-size-in-gbs "100" \
+              --boot-volume-size-in-gbs 100 \
               --is-pv-encryption-in-transit-enabled true \
               --instance-options '{"areLegacyImdsEndpointsDisabled": true}' \
               --user-data-file "cloud_init_debian.sh" \
@@ -124,31 +108,27 @@ jobs:
               --subnet-id "$SUBNET_ID" \
               --vnic-display-name "vnic-hellencommerce" \
               --assign-public-ip true \
-              --generate-public-private-key-pair true 2>/dev/null)
+              --generate-public-private-key-pair true)
 
-            if [ $? -eq 0 ] && [ ! -z "$RESPONSE" ]; then
-              echo "--------------------------------------------------------"
-              echo "🎉 ¡VICTORIA! Instancia aprovisionada con éxito."
-              echo "--------------------------------------------------------"
-              echo "=== COPIA TU LLAVE PRIVADA DESDE LAS SIGUIENTES LÍNEAS ==="
+            if [ $? -eq 0 ] && [ -n "$RESPONSE" ]; then
+              echo "🎉 ¡VICTORIA! Instancia aprovisionada."
               echo "$RESPONSE" | oci util server-parsed-json --query "data.\"private-key\"" --raw-output
-              echo "=========================================================="
               echo "exito=true" >> "$GITHUB_OUTPUT"
               rm -f cloud_init_debian.sh
               exit 0
             fi
 
-            echo "Servidor lleno (Out of host capacity). Reintentando en 60 segundos..."
+            echo "Servidor lleno. Reintentando en 60 segundos..."
             sleep 60
           done
 
-      # 3. Paso de Autorelevo: Si el paso anterior salió por tiempo, se vuelve a disparar
+      # 3. Paso de Autorelevo
       - name: Relanzar bucle si hubo Timeout
         if: steps.oci-loop.outputs.exito == 'timeout'
         run: |
-          echo "Relanzando el flujo debido a restricciones de tiempo en GitHub..."
+          echo "Relanzando el flujo..."
           curl -H "Authorization: token ${{ secrets.GH_PAT_RETRIGGER }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               -X POST \
-               -d '{"event_type": "retrigger-oracle-loop"}' \
-               "https://github.com{{ github.repository }}/dispatches"
+            -H "Accept: application/vnd.github.v3+json" \
+            -X POST \
+            -d '{"event_type": "retrigger-oracle-loop"}' \
+            "https://github.com{{ github.repository }}/dispatches"
