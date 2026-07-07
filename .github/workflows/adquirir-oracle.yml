@@ -87,14 +87,16 @@ jobs:
           
           echo "Consultando metadatos en la API de Oracle..."
           AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data[0].name" --raw-output)
-          IMAGE_ID=$(oci compute image list --compartment-id "$TENANCY_ID" --operating-system "Canonical Ubuntu" --operating-system-version "24.04 Minimal" --architecture "aarch64" --query "data[0].id" --raw-output)
+          IMAGE_ID="ocid1.image.oc1.iad.aaaaaaaasvunhvew6oia6f67kofgbyf4c7cl7jpxlyymhmsaigw2u2q6szqq"
 
           echo "Dominio de disponibilidad mapeado: [$AD_NAME]"
           echo "ID de Imagen de SO mapeado: [$IMAGE_ID]"
           echo "ID de Subred destino mapeado: [$SUBNET_ID]"
 
-          if [[ -z "$AD_NAME" || "$AD_NAME" == *"Error"* || -z "$IMAGE_ID" || "$IMAGE_ID" == *"Error"* || -z "$SUBNET_ID" ]]; then
-            echo "❌ Error Crítico: No se pudo extraer la metadata base debido a una respuesta inválida de la CLI de Oracle."
+          # Validación estricta antes de ingresar al bucle
+          if [[ -z "$AD_NAME" || "$AD_NAME" == *"Error"* || -z "$SUBNET_ID" ]]; then
+            echo "❌ Error Crítico: No se pudo extraer la metadata base o los permisos de OCI son insuficientes."
+            echo "Respuesta del AD: $AD_NAME"
             exit 1
           fi
 
