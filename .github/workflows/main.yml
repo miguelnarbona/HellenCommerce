@@ -99,8 +99,8 @@ jobs:
             ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:latest
             ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:${{ github.sha }}
           # Usamos caché directo de GitHub Actions (gha) para no llenar el disco duro local
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: ""
+          cache-to: ""
 
   auto-deploy:
     needs: build-and-push
