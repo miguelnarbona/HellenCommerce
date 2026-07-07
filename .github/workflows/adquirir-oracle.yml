@@ -79,7 +79,7 @@ jobs:
               --availability-domain "$AD_NAME" \
               --compartment-id "$TENANCY_ID" \
               --shape "VM.Standard.A1.Flex" \
-              --shape-config '{"ocpus": 4, "memoryInGBs": 24}' \
+              --shape-config '{"ocpus": 2, "memoryInGBs": 12}' \
               --boot-volume-size-in-gbs "100" \
               --is-pv-encryption-in-transit-enabled true \
               --instance-options '{"areLegacyImdsEndpointsDisabled": true}' \
