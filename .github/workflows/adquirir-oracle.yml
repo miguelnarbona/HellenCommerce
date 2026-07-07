@@ -73,6 +73,8 @@ jobs:
 
           echo "=== FASE 3: BUCLE DE ADQUISICIÓN LIMITADO ==="
           START_TIME=$(date +%s)
+          
+          # Corrección en la extracción del AD para evitar arrays en crudo
           AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data[0].name" --raw-output 2>/dev/null)
           IMAGE_ID="ocid1.image.oc1.iad.aaaaaaaasvunhvew6oia6f67kofgbyf4c7cl7jpxlyymhmsaigw2u2q6szqq"
 
@@ -85,7 +87,7 @@ jobs:
             CURRENT_TIME=$(date +%s)
             ELAPSED=$((CURRENT_TIME - START_TIME))
             
-            if [ $ELAPSED -gt 18000 ]; then # Reducido a 5 horas seguras para evitar cortes abruptos de GH
+            if [ $ELAPSED -gt 18000 ]; then 
               echo "⏱️ Límite de tiempo alcanzado. Activando autorelevo..."
               echo "exito=timeout" >> "$GITHUB_OUTPUT"
               exit 0
@@ -93,24 +95,30 @@ jobs:
 
             echo "Consultando disponibilidad en ($AD_NAME)..."
             
-            # Removido el 2>/dev/null para poder capturar el error de sintaxis si existe
+            # CONTROL CRÍTICO: Desactivar 'fail-on-error' de GitHub Actions para este comando específico
+            set +e
+            
             RESPONSE=$(oci compute instance launch \
               --availability-domain "$AD_NAME" \
               --compartment-id "$TENANCY_ID" \
               --shape "VM.Standard.A1.Flex" \
-              --shape-config '{"ocpus": 2, "memoryInGBs": 12}' \
+              --shape-config '{"ocpus":2,"memoryInGBs":12}' \
               --boot-volume-size-in-gbs 100 \
               --is-pv-encryption-in-transit-enabled true \
-              --instance-options '{"areLegacyImdsEndpointsDisabled": true}' \
+              --instance-options '{"areLegacyImdsEndpointsDisabled":true}' \
               --user-data-file "cloud_init_debian.sh" \
               --display-name "servidor-bunker-hellencommerce" \
               --image-id "$IMAGE_ID" \
               --subnet-id "$SUBNET_ID" \
               --vnic-display-name "vnic-hellencommerce" \
               --assign-public-ip true \
-              --generate-public-private-key-pair true)
+              --generate-public-private-key-pair true 2>&1)
+            
+            ESTADO_COMANDO=$?
+            # Reactivar el control estricto de errores para el resto del flujo
+            set -e
 
-            if [ $? -eq 0 ] && [ -n "$RESPONSE" ]; then
+            if [ $ESTADO_COMANDO -eq 0 ] && [ -n "$RESPONSE" ]; then
               echo "🎉 ¡VICTORIA! Instancia aprovisionada."
               echo "$RESPONSE" | oci util server-parsed-json --query "data.\"private-key\"" --raw-output
               echo "exito=true" >> "$GITHUB_OUTPUT"
@@ -118,7 +126,11 @@ jobs:
               exit 0
             fi
 
-            echo "Servidor lleno. Reintentando en 60 segundos..."
+            # Si falla porque el servidor está lleno, imprimirá el mensaje de OCI y reintentará en 60s
+            echo "Aviso de la API de Oracle o Capacidad Máxima alcanzada:"
+            echo "$RESPONSE" | grep -E "Out of capacity|TooManyRequests" || echo "Detalle: $RESPONSE"
+            
+            echo "Esperando 60 segundos para el siguiente intento..."
             sleep 60
           done
 
