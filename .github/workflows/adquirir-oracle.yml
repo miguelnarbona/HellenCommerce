@@ -39,11 +39,12 @@ jobs:
       - name: Ejecutar script de peticiones concurrentes
         id: oci-loop
         env:
-          SUPPRESS_LABEL_WARNING: "True" # Oculta las alertas visuales de la llave API
+          SUPPRESS_LABEL_WARNING: "True"
         run: |
           TENANCY_ID="${{ secrets.OCI_TENANCY_OCID }}"
           
           echo "=== FASE 1: DESPLIEGUE DE RED (NETWORKING) ==="
+          # Se extrae de forma segura el ID de la primera subred del arreglo
           VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --query "data[0].id" --raw-output 2>/dev/null)
           
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
@@ -72,12 +73,19 @@ jobs:
           
           START_TIME=$(date +%s)
           
-          # 🚨 FILTROS AJUSTADOS CON data[0] PARA EVITAR LISTAS COMPUESTAS DE TEXTO:
+          # 🚨 FORZAR EXTRACCIÓN DEL PRIMER ELEMENTO EXACTO CON [0] PARA EVITAR TEXTO MULTILÍNEA:
           AD_NAME=$(oci iam availability-domain list --query "data[0].name" --raw-output)
           IMAGE_ID=$(oci compute image list --compartment-id "$TENANCY_ID" --operating-system "Canonical Ubuntu" --operating-system-version "24.04 Minimal" --architecture "aarch64" --query "data[0].id" --raw-output)
 
-          echo "Dominio detectado de forma segura: $AD_NAME"
-          echo "ID de Imagen detectado de forma segura: $IMAGE_ID"
+          echo "Dominio de disponibilidad extraído: [$AD_NAME]"
+          echo "ID de Imagen de sistema operativo extraído: [$IMAGE_ID]"
+          echo "ID de Subred destino extraído: [$SUBNET_ID]"
+
+          # Validación de seguridad: si alguna variable crítica quedó vacía, detenemos el script con un mensaje claro
+          if [ -z "$AD_NAME" ] || [ -z "$IMAGE_ID" ] || [ -z "$SUBNET_ID" ]; then
+            echo "❌ Error Crítico: No se pudo mapear alguno de los recursos de Oracle necesarios."
+            exit 1
+          fi
 
           while true; do
             CURRENT_TIME=$(date +%s)
