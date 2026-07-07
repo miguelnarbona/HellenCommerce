@@ -44,7 +44,7 @@ jobs:
           TENANCY_ID="${{ secrets.OCI_TENANCY_OCID }}"
           
           echo "=== FASE 1: DESPLIEGUE DE RED (NETWORKING) ==="
-          VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --query "data[0].id" --raw-output 2>/dev/null)
+          VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --query "data.id" --raw-output 2>/dev/null)
           
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
             echo "Creando VCN: vcn-hellencommerce..."
@@ -55,7 +55,7 @@ jobs:
             SUBNET_ID=$(oci network subnet create --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --cidr-block "10.0.0.0/24" --route-table-id "$RT_ID" --prohibit-public-ip-on-vnic false --query "data.id" --raw-output)
           else
             echo "La infraestructura de red ya existe. Extrayendo IDs..."
-            SUBNET_ID=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --query "data[0].id" --raw-output)
+            SUBNET_ID=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --query "data.id" --raw-output)
           fi
 
           echo "========================================================"
@@ -72,18 +72,19 @@ jobs:
           
           START_TIME=$(date +%s)
           
-          # 🚨 CORRECCIÓN SINTÁCTICA DE ARREGLOS CON [0] PARA EXTRAER STRINGS LIMPIOS:
           echo "Consultando metadatos en la API de Oracle..."
-          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data[0].name" --raw-output)
-          IMAGE_ID=$(oci compute image list --compartment-id "$TENANCY_ID" --operating-system "Canonical Ubuntu" --operating-system-version "24.04 Minimal" --architecture "aarch64" --query "data[0].id" --raw-output)
+          
+          # 🚨 SE AGREGA EL PARÁMETRO MANDATORIO --compartment-id Y SE SELECCIONA EL PRIMER ELEMENTO DEL ARREGLO DE FORMA EXPLICITA:
+          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data[0].name" --raw-output 2>&1)
+          IMAGE_ID=$(oci compute image list --compartment-id "$TENANCY_ID" --operating-system "Canonical Ubuntu" --operating-system-version "24.04 Minimal" --architecture "aarch64" --query "data[0].id" --raw-output 2>&1)
 
           echo "Dominio de disponibilidad mapeado: [$AD_NAME]"
           echo "ID de Imagen de SO mapeado: [$IMAGE_ID]"
           echo "ID de Subred destino mapeado: [$SUBNET_ID]"
 
-          # Validación estricta: si falta algún parámetro, no se entra al bucle infinito
-          if [ -z "$AD_NAME" ] || [ "$AD_NAME" == "null" ] || [ -z "$IMAGE_ID" ] || [ "$IMAGE_ID" == "null" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
-            echo "❌ Error Crítico: No se pudo extraer alguno de los recursos esenciales de OCI."
+          # Validación estricta: si falta algún parámetro o contiene un mensaje de error, detenemos de forma limpia para auditarlo
+          if [[ -z "$AD_NAME" || "$AD_NAME" == *"Error"* || -z "$IMAGE_ID" || "$IMAGE_ID" == *"Error"* || -z "$SUBNET_ID" ]]; then
+            echo "❌ Error Crítico: No se pudo extraer la metadata base debido a una respuesta inválida de la CLI de Oracle."
             exit 1
           fi
 
