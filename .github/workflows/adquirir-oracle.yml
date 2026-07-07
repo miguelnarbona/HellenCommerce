@@ -1,4 +1,4 @@
-name: 🚀 Adquisición Continua de Oracle Free Tier
+name: "Cazador Oracle Free Tier"
 
 on:
   workflow_dispatch: # Permite activarlo manualmente desde la pestaña Actions
@@ -70,7 +70,7 @@ jobs:
             ELAPSED=$((CURRENT_TIME - START_TIME))
             if [ $ELAPSED -gt 19800 ]; then
               echo "⏱️ Límite de tiempo del Job cercano. Activando autorelevo..."
-              echo "exito=timeout" >> $GITHUB_OUTPUT
+              echo "exito=timeout" >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
@@ -101,7 +101,7 @@ jobs:
               echo "$RESPONSE" | oci util server-parsed-json --query "data.\"private-key\"" --raw-output
               echo "=========================================================="
               
-              echo "exito=true" >> $GITHUB_OUTPUT
+              echo "exito=true" >> "$GITHUB_OUTPUT"
               rm -f cloud_init_debian.sh
               exit 0
             fi
@@ -112,11 +112,11 @@ jobs:
 
       # 3. Paso de Autorelevo: Si el paso anterior salió por tiempo, se vuelve a disparar
       - name: Relanzar bucle si hubo Timeout
-        if: steps-oci-loop.outputs.exito == 'timeout'
+        if: steps.oci-loop.outputs.exito == 'timeout'
         run: |
           echo "Relanzando el flujo debido a restricciones de tiempo en GitHub..."
           curl -H "Authorization: token ${{ secrets.GH_PAT_RETRIGGER }}" \
                -H "Accept: application/vnd.github.v3+json" \
                -X POST \
                -d '{"event_type": "retrigger-oracle-loop"}' \
-               https://github.com{{ github.repository }}/dispatches
+               "https://github.com{{ github.repository }}/dispatches"
