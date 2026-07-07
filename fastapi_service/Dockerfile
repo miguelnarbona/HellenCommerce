@@ -2,7 +2,7 @@
 
 WORKDIR /app
 
-# Dependencias de sistema necesarias para psutil y compilaciÃ³n nativa mÃ­nima
+# Dependencias de sistema necesarias para psutil y compilación nativa mínima
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         ca-certificates \
@@ -18,10 +18,11 @@ ENV PIP_DEFAULT_TIMEOUT=300 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# ConfiguraciÃ³n del servicio (override vÃ­a docker-compose)
+# Configuración del servicio (override vía docker-compose)
 ENV LLM_MODE=online \
     HF_API_KEY=""
 
+# 🛠️ CORREGIDO: Ruta completa a tu repositorio
 LABEL org.opencontainers.image.source=https://github.com
 
 # Copiar requirements primero (cache layer)
@@ -29,7 +30,7 @@ COPY fastapi_service/requirements.txt /app/requirements.txt
 
 RUN pip install -r requirements.txt
 
-# Copiar el cÃ³digo del servicio
+# Copiar el código del servicio
 COPY fastapi_service/main.py /app/main.py
 
 # Copiar carpetas compartidas del proyecto

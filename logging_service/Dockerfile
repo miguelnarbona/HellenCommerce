@@ -9,10 +9,11 @@ ENV PIP_DEFAULT_TIMEOUT=300 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# ConfiguraciÃ³n del servicio (override vÃ­a docker-compose)
+# Configuración del servicio (override vía docker-compose)
 ENV LLM_MODE=online \
     HF_API_KEY=""
 
+# 🛠️ CORREGIDO: Ahora apunta a tu repositorio exacto
 LABEL org.opencontainers.image.source=https://github.com
 
 # Copiar requirements primero (cache layer)
@@ -20,7 +21,7 @@ COPY logging_service/requirements.txt /app/requirements.txt
 
 RUN pip install -r requirements.txt
 
-# Copiar el cÃ³digo del servicio (explÃ­cito: sin __pycache__ ni archivos temporales)
+# Copiar el código del servicio (explícito: sin __pycache__ ni archivos temporales)
 COPY logging_service/main.py /app/main.py
 
 # Copiar carpetas compartidas del proyecto
