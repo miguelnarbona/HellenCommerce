@@ -18,9 +18,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # -------------------------------------------------------
-          # SERVICIOS PRIMARIOS (contexto raíz: necesitan app/ compartido)
-          # -------------------------------------------------------
           - name: fastapi_service
             context: .
             file: ./fastapi_service/Dockerfile
@@ -41,47 +38,44 @@ jobs:
             context: .
             file: ./worker_service/Dockerfile
 
-          # -------------------------------------------------------
-          # SERVICIO DE MAPA (contexto propio: no necesita app/ compartido)
-          # -------------------------------------------------------
           - name: map_service
             context: ./map_service
             file: ./map_service/Dockerfile
 
-          # -------------------------------------------------------
-          # SERVICIOS SECUNDARIOS (1 Sola Imagen Unificada)
-          # -------------------------------------------------------
           - name: secondary_services
             context: .
             file: ./services/Dockerfile
 
     steps:
-      # PASO 1: Liberar espacio en disco usando la acción mantenida por la comunidad
-      - name: Free Disk Space (Ubuntu)
-        uses: easimon/maximize-build-space@v10
-        with:
-          root-reserve-mb: 5120
-          swap-size-mb: 1024
-          remove-dotnet: true
-          remove-android: true
-          remove-haskell: true
-          remove-codeql: true
+      # PASO 1: Liberación agresiva de espacio en disco (Asegura >30GB libres)
+      - name: Free Disk Space (Aggressive Cleanup)
+        run: |
+          echo "=== Espacio antes de la limpieza ==="
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          echo "=== Espacio después de la limpieza ==="
+          df -h
 
-      # PASO CLAVE: Forzar el nombre del dueño a minúsculas e inyectarlo en el entorno global del Runner
+      # PASO 2: Forzar el nombre del dueño a minúsculas
       - name: Downcase repository owner
         run: |
           echo "IMAGE_OWNER=${OWNER,,}" >> $GITHUB_ENV
         env:
           OWNER: '${{ github.repository_owner }}'
 
+      # PASO 3: Descargar el repositorio
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # PASO 2: QEMU para compilación ARM64 desde runners AMD64 de GitHub
+      # PASO 4: QEMU para compilación ARM64
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # PASO 3: Docker Buildx para builds multi-arquitectura
+      # PASO 5: Docker Buildx sin almacenamiento en caché local excesivo
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -92,7 +86,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # PASO 4: Build multi-arch y push a GHCR usando el ENV sanitizado en minúsculas
+      # PASO 6: Build multi-arch y push a GHCR
       - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v6
         with:
@@ -100,16 +94,14 @@ jobs:
           file: ${{ matrix.file }}
           push: true
           platforms: linux/amd64,linux/arm64
-          provenance: false   # Evita el bug visual de OS/Arch en GHCR
+          provenance: false
           tags: |
             ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:latest
             ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:${{ github.sha }}
+          # Usamos caché directo de GitHub Actions (gha) para no llenar el disco duro local
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ----------------------------------------------------------------
-  # JOB 2: Notificar y desplegar en Oracle Cloud vía webhook
-  # ----------------------------------------------------------------
   auto-deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
