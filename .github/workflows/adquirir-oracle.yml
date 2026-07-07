@@ -9,15 +9,31 @@ jobs:
   buscar-instancia:
     runs-on: ubuntu-latest
     steps:
-      # 1. Configurar la herramienta CLI de Oracle (OCI)
-      - name: Configurar Oracle Cloud CLI
-        uses: oracle-actions/setup-oci@v1
-        with:
-          user_ocid: ${{ secrets.OCI_USER_OCID }}
-          tenancy_ocid: ${{ secrets.OCI_TENANCY_OCID }}
-          fingerprint: ${{ secrets.OCI_FINGERPRINT }}
-          region: ${{ secrets.OCI_REGION }}
-          private_key: ${{ secrets.OCI_KEY_CONTENT }}
+      # 1. Configurar la herramienta CLI de Oracle (OCI) nativamente
+      - name: Instalar y Configurar Oracle Cloud CLI
+        run: |
+          # Instalar OCI CLI usando el gestor de paquetes de Python
+          pip install oci-cli --upgrade --quiet
+          
+          # Crear la carpeta de configuración oficial de Oracle
+          mkdir -p ~/.oci
+          
+          # Escribir la llave privada RSA en un archivo seguro (.pem)
+          cat << 'EOF' > ~/.oci/oci_api_key.pem
+          ${{ secrets.OCI_KEY_CONTENT }}
+          EOF
+          chmod 600 ~/.oci/oci_api_key.pem
+          
+          # Generar el archivo de configuración estructurado que requiere la CLI
+          cat << EOF > ~/.oci/config
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_OCID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          tenancy=${{ secrets.OCI_TENANCY_OCID }}
+          region=${{ secrets.OCI_REGION }}
+          key_file=~/.oci/oci_api_key.pem
+          EOF
+          chmod 600 ~/.oci/config
 
       # 2. Ejecutar el Script de Bucle de Adquisición
       - name: Ejecutar script de peticiones concurrentes
@@ -59,7 +75,6 @@ jobs:
           echo "========================================================"
           echo "=== FASE 3: BUCLE DE ADQUISICIÓN LIMITADO (5.5 HORAS) ==="
           
-          # Guardamos el tiempo de inicio para no superar el límite de GitHub Actions
           START_TIME=$(date +%s)
           AD_NAME=$(oci iam availability-domain list --query "data[0].name" --raw-output)
           IMAGE_ID=$(oci compute image list --compartment-id "$TENANCY_ID" --operating-system "Canonical Ubuntu" --operating-system-version "24.04 Minimal" --architecture "aarch64" --query "data[0].id" --raw-output)
