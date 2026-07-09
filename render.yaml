@@ -1,0 +1,233 @@
+services:
+  # ============================================================
+  # SERVICIOS PRINCIPALES INDEPENDIENTES
+  # ============================================================
+
+  # ------ MICROSERVICIO 1 ------
+  - type: web
+    name: fastapi_service
+    env: docker
+    plan: free
+    dockerCommand: python -m uvicorn main:app --host 0.0.0.0 --port 8080 --workers 2
+
+  # ------ MICROSERVICIO 2 ------
+  - type: web
+    name: intent_service
+    env: docker
+    plan: free
+    dockerCommand: python -u -m uvicorn main:app --host 0.0.0.0 --port 9010 --workers 1
+
+  # ------ MICROSERVICIO 3 ------
+  - type: web
+    name: logging_service
+    env: docker
+    plan: free
+    dockerCommand: python -m uvicorn main:app --host 0.0.0.0 --port 8099 --workers 1
+
+  # ------ MICROSERVICIO 4 ------
+  - type: web
+    name: map_service
+    env: docker
+    plan: free
+    dockerCommand: python -u -m uvicorn main:app --host 0.0.0.0 --port 5000 --workers 1
+
+  # ------ MICROSERVICIO 5 ------
+  - type: web
+    name: mistral_service
+    env: docker
+    plan: free
+    dockerCommand: python -u -m uvicorn main:app --host 0.0.0.0 --port 9001 --workers 1
+
+  # ------ MICROSERVICIO 6 ------
+  - type: web
+    name: worker_service
+    env: docker
+    plan: free
+    dockerCommand: python -m uvicorn main:app --host 0.0.0.0 --port 9000 --workers 1
+
+
+  # ============================================================
+  # ECOBOSQUE DE SUBSERVICIOS DINÁMICOS (VIA ENTRYPOINT.SH)
+  # ============================================================
+
+  # ------ MICROSERVICIO 7 ------
+  - type: web
+    name: ms-registro-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "registro_service"
+      - key: SERVICE_PORT
+        value: "8010"
+      - key: PORT
+        value: "8010"
+
+  # ------ MICROSERVICIO 8 ------
+  - type: web
+    name: ms-contacto-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "contacto_service"
+      - key: SERVICE_PORT
+        value: "8011"
+      - key: PORT
+        value: "8011"
+
+  # ------ MICROSERVICIO 9 ------
+  - type: web
+    name: ms-mensajeria-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "mensajeria_service"
+      - key: SERVICE_PORT
+        value: "8012"
+      - key: PORT
+        value: "8012"
+
+  # ------ MICROSERVICIO 10 ------
+  - type: web
+    name: ms-venta-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "venta_service"
+      - key: SERVICE_PORT
+        value: "8013"
+      - key: PORT
+        value: "8013"
+
+  # ------ MICROSERVICIO 11 ------
+  - type: web
+    name: ms-compra-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "compra_service"
+      - key: SERVICE_PORT
+        value: "8014"
+      - key: PORT
+        value: "8014"
+
+  # ------ MICROSERVICIO 12 ------
+  - type: web
+    name: ms-informativa-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "informativa_service"
+      - key: SERVICE_PORT
+        value: "8015"
+      - key: PORT
+        value: "8015"
+
+  # ------ MICROSERVICIO 13 ------
+  - type: web
+    name: ms-notificacion-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "notificacion_service"
+      - key: SERVICE_PORT
+        value: "8016"
+      - key: PORT
+        value: "8016"
+
+  # ------ MICROSERVICIO 14 ------
+  - type: web
+    name: ms-transporte-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "transporte_service"
+      - key: SERVICE_PORT
+        value: "8017"
+      - key: PORT
+        value: "8017"
+
+  # ------ MICROSERVICIO 15 ------
+  - type: web
+    name: ms-saludo-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "saludo_service"
+      - key: SERVICE_PORT
+        value: "8018"
+      - key: PORT
+        value: "8018"
+
+  # ------ MICROSERVICIO 16 ------
+  - type: web
+    name: ms-despedida-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "despedida_service"
+      - key: SERVICE_PORT
+        value: "8019"
+      - key: PORT
+        value: "8019"
+
+  # ------ MICROSERVICIO 17 ------
+  - type: web
+    name: ms-ruta-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "ruta_service"
+      - key: SERVICE_PORT
+        value: "8020"
+      - key: PORT
+        value: "8020"
+
+  # ------ MICROSERVICIO 18 ------
+  - type: web
+    name: ms-negocio-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "negocio_service"
+      - key: SERVICE_PORT
+        value: "8021"
+      - key: PORT
+        value: "8021"
+
+  # ------ MICROSERVICIO 19 ------
+  - type: web
+    name: ms-servicio-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "servicio_service"
+      - key: SERVICE_PORT
+        value: "8022"
+      - key: PORT
+        value: "8022"
+
+  # ------ MICROSERVICIO 20 ------
+  - type: web
+    name: ms-otra-service
+    env: docker
+    plan: free
+    envVars:
+      - key: SERVICE_NAME
+        value: "otra_service"
+      - key: SERVICE_PORT
+        value: "8023"
+      - key: PORT
+        value: "8023"
