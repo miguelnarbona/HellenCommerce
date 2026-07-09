@@ -74,7 +74,7 @@ jobs:
           echo "=== FASE 3: BUCLE DE ADQUISICIÓN LIMITADO ==="
           START_TIME=$(date +%s)
           
-          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data.name" --raw-output 2>/dev/null)
+          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data[0].name" --raw-output 2>/dev/null)
           IMAGE_ID="ocid1.image.oc1.iad.aaaaaaaasvunhvew6oia6f67kofgbyf4c7cl7jpxlyymhmsaigw2u2q6szqq"
 
           if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
