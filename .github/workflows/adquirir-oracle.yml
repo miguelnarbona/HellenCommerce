@@ -1,4 +1,5 @@
 name: "Cazador Oracle Free Tier"
+
 on:
   workflow_dispatch: # Permite activarlo manualmente desde la pestaña Actions
   repository_dispatch:
@@ -17,7 +18,6 @@ jobs:
           ${{ secrets.OCI_KEY_CONTENT }}
           EOF
           chmod 600 ~/.oci/oci_api_key.pem
-
           cat << EOF > ~/.oci/config
           [DEFAULT]
           user=${{ secrets.OCI_USER_OCID }}
@@ -35,15 +35,14 @@ jobs:
           SUPPRESS_LABEL_WARNING: "True"
         run: |
           TENANCY_ID="${{ secrets.OCI_TENANCY_OCID }}"
+          
           echo "=== FASE 1: DESPLIEGUE DE RED (NETWORKING) ==="
-          
           VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --query "data[0].id" --raw-output 2>/dev/null)
-          
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
             echo "No se encontró 'vcn-hellencommerce'. Buscando CUALQUIER VCN disponible..."
             VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --query "data[0].id" --raw-output 2>/dev/null)
           fi
-
+          
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
             echo "No se encontró ninguna VCN existente. Creando una nueva..."
             VCN_ID=$(oci network vcn create --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --cidr-block "10.0.0.0/16" --query "data.id" --raw-output)
@@ -62,41 +61,42 @@ jobs:
               echo "Subred detectada con ID: [$SUBNET_ID]"
             fi
           fi
-
-          echo "=== FASE 2: PREPARACIÓN DE SCRIPT CLOUD-INIT ==="
+          
+          echo "=== FASE 2: PREPARACIÓN DE SCRIPTS Y LLAVES ==="
+          # Inyectamos tu llave pública fija para la máquina virtual
+          echo "${{ secrets.OCI_SSH_PUBLIC_KEY }}" > oracle_key.pub
+          
           cat << 'EOF' > cloud_init_debian.sh
           #!/bin/bash
           sleep 15
           apt-get update && apt-get dist-upgrade -y && apt-get install -y curl
           curl -sSL https://githubusercontent.com | bash
           EOF
-
+          
           echo "=== FASE 3: BUCLE DE ADQUISICIÓN LIMITADO ==="
           START_TIME=$(date +%s)
-          
           AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data[0].name" --raw-output 2>/dev/null)
           IMAGE_ID="ocid1.image.oc1.iad.aaaaaaaasvunhvew6oia6f67kofgbyf4c7cl7jpxlyymhmsaigw2u2q6szqq"
-
+          
           if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
             echo "❌ Error Crítico: Parámetros base vacíos."
             exit 1
           fi
-
+          
           while true; do
             CURRENT_TIME=$(date +%s)
             ELAPSED=$((CURRENT_TIME - START_TIME))
             
-            if [ $ELAPSED -gt 21300 ]; then 
+            if [ $ELAPSED -gt 21300 ]; then
               echo "⏱️ Límite de tiempo alcanzado (5h 55m). Activando autorelevo..."
               echo "exito=timeout" >> "$GITHUB_OUTPUT"
               exit 0
             fi
-
+            
             echo "Consultando disponibilidad en ($AD_NAME)..."
             
-            # CONTROL CRÍTICO: Desactivar temporamente 'fail-on-error' de GitHub Actions
+            # CONTROL CRÍTICO: Desactivar temporalmente 'fail-on-error' de GitHub Actions
             set +e
-            
             RESPONSE=$(oci compute instance launch \
               --availability-domain "$AD_NAME" \
               --compartment-id "$TENANCY_ID" \
@@ -111,22 +111,19 @@ jobs:
               --subnet-id "$SUBNET_ID" \
               --vnic-display-name "vnic-hellencommerce" \
               --assign-public-ip true \
-              --generate-public-private-key-pair true 2>&1)
-            
+              --ssh-authorized-keys-file "oracle_key.pub" 2>&1)
             ESTADO_COMANDO=$?
             set -e # Reactivar control de errores estricto
-
+            
             if [ $ESTADO_COMANDO -eq 0 ] && [ -n "$RESPONSE" ]; then
               echo "🎉 ¡VICTORIA! Instancia aprovisionada con éxito."
-              echo "$RESPONSE" | oci util server-parsed-json --query "data.\"private-key\"" --raw-output
               echo "exito=true" >> "$GITHUB_OUTPUT"
-              rm -f cloud_init_debian.sh
+              rm -f cloud_init_debian.sh oracle_key.pub
               exit 0
             fi
-
+            
             echo "Aviso de la API de Oracle o Capacidad Máxima alcanzada:"
             echo "$RESPONSE" | grep -E "Out of capacity|TooManyRequests" || echo "Detalle: $RESPONSE"
-            
             echo "Esperando 60 segundos para el siguiente intento..."
             sleep 60
           done
