@@ -1,5 +1,4 @@
 name: "Cazador Oracle Free Tier"
-
 on:
   workflow_dispatch: # Permite activarlo manualmente desde la pestaña Actions
   repository_dispatch:
@@ -37,10 +36,10 @@ jobs:
           TENANCY_ID="${{ secrets.OCI_TENANCY_OCID }}"
           
           echo "=== FASE 1: DESPLIEGUE DE RED (NETWORKING) ==="
-          VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --query "data[0].id" --raw-output 2>/dev/null)
+          VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --query "data.id" --raw-output 2>/dev/null)
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
             echo "No se encontró 'vcn-hellencommerce'. Buscando CUALQUIER VCN disponible..."
-            VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --query "data[0].id" --raw-output 2>/dev/null)
+            VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --query "data.id" --raw-output 2>/dev/null)
           fi
           
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
@@ -52,7 +51,7 @@ jobs:
             SUBNET_ID=$(oci network subnet create --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --cidr-block "10.0.0.0/24" --route-table-id "$RT_ID" --prohibit-public-ip-on-vnic false --query "data.id" --raw-output)
           else
             echo "Utilizando VCN existente con ID: [$VCN_ID]"
-            SUBNET_ID=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --query "data[0].id" --raw-output 2>/dev/null)
+            SUBNET_ID=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --query "data.id" --raw-output 2>/dev/null)
             if [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
               echo "Creando subred pública..."
               RT_ID=$(oci network vcn get --vcn-id "$VCN_ID" --query "data.\"default-route-table-id\"" --raw-output)
@@ -61,28 +60,44 @@ jobs:
               echo "Subred detectada con ID: [$SUBNET_ID]"
             fi
           fi
-          
+
           echo "=== FASE 2: PREPARACIÓN DE SCRIPTS Y LLAVES ==="
-          # Inyectamos tu llave pública fija para la máquina virtual
           echo "${{ secrets.OCI_SSH_PUBLIC_KEY }}" > oracle_hellen.pub
           
-          cat << 'EOF' > cloud_init_debian.sh
+          cat << 'EOF' > cloud_init_ubuntu.sh
           #!/bin/bash
           sleep 15
+          export DEBIAN_FRONTEND=noninteractive
           apt-get update && apt-get dist-upgrade -y && apt-get install -y curl
           curl -sSL https://githubusercontent.com | bash
           EOF
+
+          echo "=== FASE 3: BÚSQUEDA DINÁMICA DE UBUNTU 24.04 ARM ==="
+          # Se listan las imágenes de Ubuntu para la arquitectura ARM y se filtra estrictamente por la versión '24.04'
+          IMAGE_ID=$(oci compute image list \
+            --compartment-id "$TENANCY_ID" \
+            --shape "VM.Standard.A1.Flex" \
+            --operating-system "Canonical Ubuntu" \
+            --sort-by "TIMECREATED" \
+            --query "data[?contains(\"operating-system-version\", '24.04')].id |" \
+            --raw-output 2>/dev/null)
           
-          echo "=== FASE 3: BUCLE DE ADQUISICIÓN LIMITADO ==="
+          # Fallback de seguridad: Si por alguna razón la query exacta falla, busca por nombre de texto plano
+          if [ -z "$IMAGE_ID" ] || [ "$IMAGE_ID" == "null" ]; then
+            IMAGE_ID=$(oci compute image list --compartment-id "$TENANCY_ID" --shape "VM.Standard.A1.Flex" --operating-system "Canonical Ubuntu" --sort-by "TIMECREATED" --query "data[*].{id:id, name:display-name}" 2>/dev/null | jq -r '.[] | select(.name | contains("24.04")) | .id' | head -n 1)
+          fi
+
+          echo "ID de Imagen Ubuntu 24.04 ARM detectado para tu región: [$IMAGE_ID]"
+
+          echo "=== FASE 4: BUCLE DE ADQUISICIÓN LIMITADO ==="
           START_TIME=$(date +%s)
-          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data[0].name" --raw-output 2>/dev/null)
-          IMAGE_ID="ocid1.image.oc1.iad.aaaaaaaasvunhvew6oia6f67kofgbyf4c7cl7jpxlyymhmsaigw2u2q6szqq"
-          
-          if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
-            echo "❌ Error Crítico: Parámetros base vacíos."
+          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data.name" --raw-output 2>/dev/null)
+
+          if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ] || [ -z "$IMAGE_ID" ] || [ "$IMAGE_ID" == "null" ]; then
+            echo "❌ Error Crítico: Parámetros base vacíos (AD, Subnet o Imagen 24.04 inválidos)."
             exit 1
           fi
-          
+
           while true; do
             CURRENT_TIME=$(date +%s)
             ELAPSED=$((CURRENT_TIME - START_TIME))
@@ -92,10 +107,9 @@ jobs:
               echo "exito=timeout" >> "$GITHUB_OUTPUT"
               exit 0
             fi
-            
+
             echo "Consultando disponibilidad en ($AD_NAME)..."
             
-            # CONTROL CRÍTICO: Desactivar temporalmente 'fail-on-error' de GitHub Actions
             set +e
             RESPONSE=$(oci compute instance launch \
               --availability-domain "$AD_NAME" \
@@ -105,7 +119,7 @@ jobs:
               --boot-volume-size-in-gbs 100 \
               --is-pv-encryption-in-transit-enabled true \
               --instance-options '{"areLegacyImdsEndpointsDisabled":true}' \
-              --user-data-file "cloud_init_debian.sh" \
+              --user-data-file "cloud_init_ubuntu.sh" \
               --display-name "servidor-bunker-hellencommerce" \
               --image-id "$IMAGE_ID" \
               --subnet-id "$SUBNET_ID" \
@@ -113,17 +127,18 @@ jobs:
               --assign-public-ip true \
               --ssh-authorized-keys-file "oracle_hellen.pub" 2>&1)
             ESTADO_COMANDO=$?
-            set -e # Reactivar control de errores estricto
-            
+            set -e
+
             if [ $ESTADO_COMANDO -eq 0 ] && [ -n "$RESPONSE" ]; then
               echo "🎉 ¡VICTORIA! Instancia aprovisionada con éxito."
               echo "exito=true" >> "$GITHUB_OUTPUT"
-              rm -f cloud_init_debian.sh oracle_hellen.pub
+              rm -f cloud_init_ubuntu.sh oracle_hellen.pub
               exit 0
             fi
-            
+
             echo "Aviso de la API de Oracle o Capacidad Máxima alcanzada:"
-            echo "$RESPONSE" | grep -E "Out of capacity|TooManyRequests" || echo "Detalle: $RESPONSE"
+            echo "$RESPONSE" | grep -E "Out of capacity|TooManyRequests|InternalServerError" || echo "Detalle: $RESPONSE"
+            
             echo "Esperando 60 segundos para el siguiente intento..."
             sleep 60
           done
