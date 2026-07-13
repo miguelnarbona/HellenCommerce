@@ -37,44 +37,40 @@ jobs:
           TENANCY_ID="${{ secrets.OCI_TENANCY_OCID }}"
           
           echo "=== FASE 1: DESPLIEGUE DE RED (NETWORKING) ==="
-          # Intentar buscar la VCN específica por nombre
-          VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --query "data[0].id" --raw-output 2>/dev/null)
+          # Buscar VCN específica por nombre usando jq de forma segura
+          VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[] | select(."display-name" == "vcn-hellencommerce") | .id' | head -n 1)
           
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
             echo "No se encontró 'vcn-hellencommerce'. Buscando CUALQUIER VCN disponible..."
-            VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --query "data[0].id" --raw-output 2>/dev/null)
+            VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[0].id // empty')
           fi
           
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
             echo "No se encontró ninguna VCN existente. El límite de red podría estar lleno."
             echo "Buscando VCNs antiguas para eliminarlas automáticamente y liberar espacio..."
             
-            # Obtener lista de todas las VCNs en la cuenta
-            ALL_VCNS=$(oci network vcn list --compartment-id "$TENANCY_ID" --query "data[*].id" --raw-output 2>/dev/null || echo "")
+            ALL_VCNS=$(oci network vcn list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[].id // empty')
             
-            if [ -n "$ALL_VCNS" ] && [ "$ALL_VCNS" != "null" ]; then
+            if [ -n "$ALL_VCNS" ]; then
               for OLD_VCN in $ALL_VCNS; do
                 echo "Eliminando dependencias de la VCN antigua: [$OLD_VCN]..."
                 
-                # 1. Buscar y eliminar Subredes asociadas
-                SUBNETS=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$OLD_VCN" --query "data[*].id" --raw-output 2>/dev/null || echo "")
+                SUBNETS=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$OLD_VCN" --output json 2>/dev/null | jq -r '.data[].id // empty')
                 for SUB in $SUBNETS; do
-                  if [ -n "$SUB" ] && [ "$SUB" != "null" ]; then
+                  if [ -n "$SUB" ]; then
                     echo "Borrando subred: [$SUB]"
                     oci network subnet delete --subnet-id "$SUB" --force 2>/dev/null || true
                   fi
                 done
                 
-                # 2. Buscar y desvincular/eliminar Internet Gateways asociados
-                IGS=$(oci network internet-gateway list --compartment-id "$TENANCY_ID" --vcn-id "$OLD_VCN" --query "data[*].id" --raw-output 2>/dev/null || echo "")
+                IGS=$(oci network internet-gateway list --compartment-id "$TENANCY_ID" --vcn-id "$OLD_VCN" --output json 2>/dev/null | jq -r '.data[].id // empty')
                 for IG in $IGS; do
-                  if [ -n "$IG" ] && [ "$IG" != "null" ]; then
+                  if [ -n "$IG" ]; then
                     echo "Borrando Internet Gateway: [$IG]"
                     oci network internet-gateway delete --ig-id "$IG" --force 2>/dev/null || true
                   fi
                 done
                 
-                # 3. Eliminar la VCN limpia para liberar el slot de límite
                 echo "Borrando estructura principal de la VCN..."
                 oci network vcn delete --vcn-id "$OLD_VCN" --force 2>/dev/null || true
                 sleep 5
@@ -82,19 +78,26 @@ jobs:
             fi
             
             echo "Espacio liberado. Creando la nueva red corporativa..."
-            VCN_ID=$(oci network vcn create --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --cidr-block "10.0.0.0/16" --query "data.id" --raw-output)
-            IG_ID=$(oci network internet-gateway create --compartment-id "$TENANCY_ID" --display-name "ig-hellencommerce" --is-enabled true --vcn-id "$VCN_ID" --query "data.id" --raw-output)
-            RT_ID=$(oci network vcn get --vcn-id "$VCN_ID" --query "data.\"default-route-table-id\"" --raw-output)
-            oci network route-table update --rt-id "$RT_ID" --route-rules "[{\"cidrBlock\":\"0.0.0.0/0\",\"networkEntityId\":\"$IG_ID\"}]" > /dev/null
-            SUBNET_ID=$(oci network subnet create --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --cidr-block "10.0.0.0/24" --route-table-id "$RT_ID" --prohibit-public-ip-on-vnic false --query "data.id" --raw-output)
+            VCN_DATA=$(oci network vcn create --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --cidr-block "10.0.0.0/16" --output json)
+            VCN_ID=$(echo "$VCN_DATA" | jq -r '.data.id')
+            
+            IG_DATA=$(oci network internet-gateway create --compartment-id "$TENANCY_ID" --display-name "ig-hellencommerce" --is-enabled true --vcn-id "$VCN_ID" --output json)
+            IG_ID=$(echo "$IG_DATA" | jq -r '.data.id')
+            
+            RT_ID=$(oci network vcn get --vcn-id "$VCN_ID" --output json | jq -r '.data."default-route-table-id"')
+            oci network route-table update --rt-id "$RT_ID" --route-rules "[{\"cidrBlock\":\"0.0.0.0/0\",\"networkEntityId\":\"$IG_ID\"}]" --output json > /dev/null
+            
+            SUBNET_DATA=$(oci network subnet create --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --cidr-block "10.0.0.0/24" --route-table-id "$RT_ID" --prohibit-public-ip-on-vnic false --output json)
+            SUBNET_ID=$(echo "$SUBNET_DATA" | jq -r '.data.id')
           else
             echo "Utilizando VCN existente con ID: [$VCN_ID]"
-            SUBNET_ID=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --query "data[0].id" --raw-output 2>/dev/null)
+            SUBNET_ID=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --output json 2>/dev/null | jq -r '.data[0].id // empty')
             
             if [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
               echo "Creando subred pública..."
-              RT_ID=$(oci network vcn get --vcn-id "$VCN_ID" --query "data.\"default-route-table-id\"" --raw-output)
-              SUBNET_ID=$(oci network subnet create --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --cidr-block "10.0.8.0/24" --route-table-id "$RT_ID" --prohibit-public-ip-on-vnic false --query "data.id" --raw-output)
+              RT_ID=$(oci network vcn get --vcn-id "$VCN_ID" --output json | jq -r '.data."default-route-table-id"')
+              SUBNET_DATA=$(oci network subnet create --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --cidr-block "10.0.8.0/24" --route-table-id "$RT_ID" --prohibit-public-ip-on-vnic false --output json)
+              SUBNET_ID=$(echo "$SUBNET_DATA" | jq -r '.data.id')
             else
               echo "Subred detectada con ID: [$SUBNET_ID]"
             fi
@@ -112,28 +115,37 @@ jobs:
           EOF
           
           echo "=== FASE 3: BÚSQUEDA DINÁMICA DE UBUNTU 24.04 ARM ==="
-          # Se corrigió la consulta JMESPath eliminando el operador '|' huérfano y usando un filtro de texto limpio
+          # Eliminamos por completo el parámetro --query problemático y usamos jq para parsear el JSON de salida sin errores sintácticos
           IMAGE_ID=$(oci compute image list \
             --compartment-id "$TENANCY_ID" \
             --shape "VM.Standard.A1.Flex" \
             --operating-system "Canonical Ubuntu" \
             --sort-by "TIMECREATED" \
-            --query "data[?contains(\"operating-system-version\", '24.04')].id |" \
-            --raw-output 2>/dev/null)
+            --output json 2>/dev/null | jq -r '.data[] | select(."operating-system-version" and (."operating-system-version" | contains("24.04"))) | .id' | head -n 1)
             
           if [ -z "$IMAGE_ID" ] || [ "$IMAGE_ID" == "null" ]; then
-            echo "Búsqueda secundaria de respaldo mediante filtrado con jq..."
-            IMAGE_ID=$(oci compute image list --compartment-id "$TENANCY_ID" --shape "VM.Standard.A1.Flex" --operating-system "Canonical Ubuntu" --sort-by "TIMECREATED" --output json 2>/dev/null | jq -r '.data[] | select(."operating-system-version" | contains("24.04")) | .id' | head -n 1)
+            echo "Aviso: No se encontró Ubuntu 24.04 específico. Buscando cualquier versión de Ubuntu ARM disponible..."
+            IMAGE_ID=$(oci compute image list \
+              --compartment-id "$TENANCY_ID" \
+              --shape "VM.Standard.A1.Flex" \
+              --operating-system "Canonical Ubuntu" \
+              --sort-by "TIMECREATED" \
+              --output json 2>/dev/null | jq -r '.data[0].id // empty')
           fi
           
-          echo "ID de Imagen Ubuntu 24.04 ARM detectado para tu región: [$IMAGE_ID]"
+          if [ -z "$IMAGE_ID" ] || [ "$IMAGE_ID" == "null" ]; then
+            echo "❌ Error Crítico en Fase 3: No se detectó ninguna imagen válida de Ubuntu ARM compatible en tu compartimento corporativo."
+            exit 1
+          fi
+          
+          echo "ID de Imagen Ubuntu ARM detectado con éxito: [$IMAGE_ID]"
           
           echo "=== FASE 4: BUCLE DE ADQUISICIÓN LIMITADO ==="
           START_TIME=$(date +%s)
-          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --query "data[0].name" --raw-output 2>/dev/null)
+          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[0].name // empty')
           
-          if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ] || [ -z "$IMAGE_ID" ] || [ "$IMAGE_ID" == "null" ]; then
-            echo "❌ Error Crítico: Parámetros base vacíos (AD, Subnet o Imagen 24.04 inválidos)."
+          if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
+            echo "❌ Error Crítico: Parámetros base de red o dominio vacíos (AD o Subnet inválidos)."
             exit 1
           fi
           
