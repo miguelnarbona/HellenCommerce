@@ -64,7 +64,7 @@ jobs:
           
           echo "=== FASE 2: PREPARACIÓN DE SCRIPTS Y LLAVES ==="
           # Inyectamos tu llave pública fija para la máquina virtual
-          echo "${{ secrets.OCI_SSH_PUBLIC_KEY }}" > oracle_key.pub
+          echo "${{ secrets.OCI_SSH_PUBLIC_KEY }}" > oracle_hellen.pub
           
           cat << 'EOF' > cloud_init_debian.sh
           #!/bin/bash
@@ -111,14 +111,14 @@ jobs:
               --subnet-id "$SUBNET_ID" \
               --vnic-display-name "vnic-hellencommerce" \
               --assign-public-ip true \
-              --ssh-authorized-keys-file "oracle_key.pub" 2>&1)
+              --ssh-authorized-keys-file "oracle_hellen.pub" 2>&1)
             ESTADO_COMANDO=$?
             set -e # Reactivar control de errores estricto
             
             if [ $ESTADO_COMANDO -eq 0 ] && [ -n "$RESPONSE" ]; then
               echo "🎉 ¡VICTORIA! Instancia aprovisionada con éxito."
               echo "exito=true" >> "$GITHUB_OUTPUT"
-              rm -f cloud_init_debian.sh oracle_key.pub
+              rm -f cloud_init_debian.sh oracle_hellen.pub
               exit 0
             fi
             
