@@ -4,6 +4,10 @@ on:
   workflow_dispatch: # Permite activarlo manualmente desde la pestaña Actions
   repository_dispatch:
     types: [retrigger-oracle-loop] # Permite que el pipeline se llame a sí mismo
+  workflow_run:
+    workflows: ["Build and Push to GHCR (Matrix)"] # <-- Debe coincidir EXACTAMENTE con el 'name' de tu primer workflow
+    types:
+      - completed # Se activa al terminar el primer flujo
 
 jobs:
   buscar-instancia:

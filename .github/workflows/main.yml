@@ -61,11 +61,13 @@ jobs:
           df -h
 
       # PASO 2: Forzar el nombre del dueño a minúsculas
-      - name: Downcase repository owner
+      - name: Downcase repository owner and name
         run: |
           echo "IMAGE_OWNER=${OWNER,,}" >> $GITHUB_ENV
+          echo "REPO_NAME=${REPO,,}" >> $GITHUB_ENV
         env:
           OWNER: '${{ github.repository_owner }}'
+          REPO: '${{ github.event.repository.name }}' # <--- Captura el nombre del repo
 
       # PASO 3: Descargar el repositorio
       - name: Checkout repository
@@ -84,7 +86,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
 
       # PASO 6: Build multi-arch y push a GHCR
       - name: Build and push ${{ matrix.name }}
@@ -95,9 +97,12 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           provenance: false
+          sbom: false
           tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:${{ github.sha }}
+            ghcr.io/${{ env.IMAGE_OWNER }}/${{ env.REPO_NAME }}-${{ matrix.name }}:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/${{ env.REPO_NAME }}-${{ matrix.name }}:${{ github.sha }}
+          #  ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:latest
+          #  ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:${{ github.sha }}
           # Usamos caché directo de GitHub Actions (gha) para no llenar el disco duro local
           cache-from: ""
           cache-to: ""
