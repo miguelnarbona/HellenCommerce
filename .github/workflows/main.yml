@@ -84,7 +84,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # PASO 6: Build multi-arch y push a GHCR
       - name: Build and push ${{ matrix.name }}
