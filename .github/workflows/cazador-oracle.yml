@@ -151,3 +151,161 @@ jobs:
           
           echo "=== FASE 4: BUCLE DE ADQUISICIÓN LIMITADO ==="
           START_TIME=$(date +%s)
+          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[0].name // empty')
+          
+          if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
+            echo "❌ Error Crítico: Parámetros base de red o dominio vacíos."
+            exit 1
+          fi
+
+          # PRUEBA RÁPIDA: Límite de tiempo fijado en 5 minutos (300 segundos)
+          # NOTA: Cuando funcione, cámbialo a: TIME_LIMIT=$(( 5 * 3600 + 50 * 60 ))
+          TIME_LIMIT=301
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$(( CURRENT_TIME - START_TIME ))
+
+            # VALIDACIÓN DE TIEMPO LÍMITE PARA ACTIVAR AUTORELEVO
+            if [ $ELAPSED -ge $TIME_LIMIT ]; then
+              echo "⏱ Límite de tiempo alcanzado ($((ELAPSED / 60)) min). Activando autorelevo..."
+              
+              # Capturamos la respuesta HTTP y el código de estado de GitHub
+              HTTP_RESPONSE=$(curl -L -s -w " HTTP_STATUS:%{http_code}" \
+                -X POST \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: token ${{ secrets.GH_PAT_RETRIGGER }}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                https://github.com \
+                -d '{"event_type": "retrigger-oracle-loop"}')
+              
+              echo "Respuesta del servidor de GitHub: $HTTP_RESPONSE"
+              
+              # Verificamos si la API respondió con éxito (Código 204 No Content)
+              if echo "$HTTP_RESPONSE" | grep -q "HTTP_STATUS:204"; then
+                echo "✅ Comando de relevo enviado con éxito a GitHub Actions. Cerrando."
+                exit 0
+              else
+                echo "❌ ERROR CRÍTICO: GitHub rechazó la petición de autorelevo."
+                exit 1
+              fi
+            fi
+
+#            if [ $ELAPSED -ge $TIME_LIMIT ]; then
+#              echo "⏱ Límite de tiempo alcanzado ($((ELAPSED / 60)) min). Activando autorelevo..."
+              
+#              # LLAMADA CORRECTA A LA API DE GITHUB
+#              curl -L \
+#                -X POST \
+#                -H "Accept: application/vnd.github+json" \
+#                -H "Authorization: Bearer $GITHUB_TOKEN" \
+#                -H "X-GitHub-Api-Version: 2022-11-28" \
+#                https://github.com \
+#                -d '{"event_type": "retrigger-oracle-loop"}'
+              
+#              echo "✅ Comando de relevo enviado con éxito a GitHub Actions. Cerrando."
+#              exit 0
+#            fi
+
+            echo "Consultando disponibilidad en ($AD_NAME)..."
+            
+            # PROTECCIÓN: Desactivar detención por error para que no muera el script si Oracle dice 'No hay capacidad'
+            set +e
+            
+            # Lanzamos la petición de creación idéntica a tu script ANTERIOR (Robusta)
+            RESPONSE=$(oci compute instance launch \
+              --availability-domain "$AD_NAME" \
+              --compartment-id "$TENANCY_ID" \
+              --shape "VM.Standard.A1.Flex" \
+              --shape-config '{"ocpus":2,"memoryInGBs":12}' \
+              --boot-volume-size-in-gbs 100 \
+              --is-pv-encryption-in-transit-enabled true \
+              --instance-options '{"areLegacyImdsEndpointsDisabled":true}' \
+              --user-data-file "cloud_init_ubuntu.sh" \
+              --display-name "servidor-bunker-hellencommerce" \
+              --image-id "$IMAGE_ID" \
+              --subnet-id "$SUBNET_ID" \
+              --vnic-display-name "vnic-hellencommerce" \
+              --assign-public-ip true \
+              --ssh-authorized-keys-file "oracle_hellen.pub" 2>&1)
+            
+            ESTADO_COMANDO=$?
+            # Reactivar el modo estricto de Bash
+            set -e
+
+            # Validar éxito del aprovisionamiento
+            if [ $ESTADO_COMANDO -eq 0 ] && [ -n "$RESPONSE" ]; then
+              echo "🎉 ¡VICTORIA! Instancia aprovisionada con éxito."
+              rm -f cloud_init_ubuntu.sh oracle_hellen.pub
+              exit 0
+            fi
+
+            # Captura limpia de logs sin romper el bucle
+            echo "Aviso de la API de Oracle o Capacidad Máxima alcanzada:"
+            echo "$RESPONSE" | grep -E "Out of capacity|TooManyRequests|InternalServerError|Out of host capacity" || echo "Detalle: $RESPONSE"
+
+            echo "Esperando 60 segundos para el siguiente intento..."
+            sleep 60
+          done
+
+#          START_TIME=$(date +%s)
+#          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[0].name // empty')
+          
+#          if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
+#            echo "❌ Error Crítico: Parámetros base de red o dominio vacíos (AD o Subnet inválidos)."
+#            exit 1
+#          fi
+          
+#          while true; do
+#            CURRENT_TIME=$(date +%s)
+#            ELAPSED=$((CURRENT_TIME - START_TIME))
+            
+#            if [ $ELAPSED -gt 21300 ]; then
+#              echo "⏱ Límite de tiempo alcanzado (5h 55m). Activando autorelevo..."
+#              echo "exito=timeout" >> "$GITHUB_OUTPUT"
+#              exit 0
+#            fi
+            
+#            echo "Consultando disponibilidad en ($AD_NAME)..."
+#            set +e
+#            RESPONSE=$(oci compute instance launch \
+#              --availability-domain "$AD_NAME" \
+#              --compartment-id "$TENANCY_ID" \
+#              --shape "VM.Standard.A1.Flex" \
+#              --shape-config '{"ocpus":2,"memoryInGBs":12}' \
+#              --boot-volume-size-in-gbs 100 \
+#              --is-pv-encryption-in-transit-enabled true \
+#              --instance-options '{"areLegacyImdsEndpointsDisabled":true}' \
+#              --user-data-file "cloud_init_ubuntu.sh" \
+#              --display-name "servidor-bunker-hellencommerce" \
+#              --image-id "$IMAGE_ID" \
+#              --subnet-id "$SUBNET_ID" \
+#              --vnic-display-name "vnic-hellencommerce" \
+#              --assign-public-ip true \
+#              --ssh-authorized-keys-file "oracle_hellen.pub" 2>&1)
+#            ESTADO_COMANDO=$?
+#            set -e
+            
+#            if [ $ESTADO_COMANDO -eq 0 ] && [ -n "$RESPONSE" ]; then
+#              echo "🎉 ¡VICTORIA! Instancia aprovisionada con éxito."
+#              echo "exito=true" >> "$GITHUB_OUTPUT"
+#              rm -f cloud_init_ubuntu.sh oracle_hellen.pub
+#              exit 0
+#            fi
+            
+#            echo "Aviso de la API de Oracle o Capacidad Máxima alcanzada:"
+#            echo "$RESPONSE" | grep -E "Out of capacity|TooManyRequests|InternalServerError" || echo "Detalle: $RESPONSE"
+#            echo "Esperando 60 segundos para el siguiente intento..."
+#            sleep 60
+#          done
+
+#      # 3. Paso de Autorelevo
+#      - name: Relanzar bucle si hubo Timeout
+#        if: steps.oci-loop.outputs.exito == 'timeout'
+#        run: |
+#          echo "Relanzando el flujo debido a restricciones de tiempo en GitHub..."
+#          curl -H "Authorization: token ${{ secrets.GH_PAT_RETRIGGER }}" \
+#            -H "Accept: application/vnd.github.v3+json" \
+#            -X POST \
+#            -d '{"event_type": "retrigger-oracle-loop"}' \
+#            "https://github.com/${{ github.repository }}/dispatches"
