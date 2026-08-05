@@ -130,7 +130,7 @@ jobs:
           
           echo "=== FASE 4: BUCLE DE ADQUISICIÓN LIMITADO ==="
           START_TIME=$(date +%s)
-          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data.name // empty')
+          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[0].name // empty')
           
           if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
             echo "❌ Error Crítico: Parámetros base de red o dominio vacíos."
