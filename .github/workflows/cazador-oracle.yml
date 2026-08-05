@@ -1,22 +1,21 @@
 name: "Cazador Oracle Free Tier"
 
 on:
-  workflow_dispatch: # Permite activarlo manualmente desde la pestaña Actions
+  workflow_dispatch:
   repository_dispatch:
-    types: [retrigger-oracle-loop] # Permite que el pipeline se llame a sí mismo
+    types: [retrigger-oracle-loop]
   workflow_run:
-    workflows: ["Build and Push to GHCR (Matrix)"] # <-- Debe coincidir EXACTAMENTE con el 'name' de tu primer workflow
+    workflows: ["Build and Push to GHCR (Matrix)"]
     types:
-      - completed # Se activa al terminar el primer flujo
+      - completed
 
 jobs:
   buscar-instancia:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write      # <--- AGREGAR ESTA LÍNEA
+      actions: write
     steps:
-      # 1. Configurar la herramienta CLI de Oracle (OCI) nativamente
       - name: Instalar y Configurar Oracle Cloud CLI
         run: |
           pip install oci-cli --upgrade --quiet
@@ -35,35 +34,30 @@ jobs:
           EOF
           chmod 600 ~/.oci/config
 
-      # 2. Ejecutar el Script de Bucle de Adquisición
       - name: Ejecutar script de peticiones concurrentes
         id: oci-loop
         env:
           SUPPRESS_LABEL_WARNING: "True"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # <--- AGREGAR ESTA LÍNEA
-          REPO_NAME: ${{ github.repository }}       # <--- AGREGAR ESTA LÍNEA
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_NAME: ${{ github.repository }}
         run: |
           TENANCY_ID="${{ secrets.OCI_TENANCY_OCID }}"
           
           echo "=== FASE 1: DESPLIEGUE DE RED (NETWORKING) ==="
-          # Buscar VCN específica por nombre usando jq de forma segura
           VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[] | select(."display-name" == "vcn-hellencommerce") | .id' | head -n 1)
           
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
             echo "No se encontró 'vcn-hellencommerce'. Buscando CUALQUIER VCN disponible..."
-            VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[0].id // empty')
+            VCN_ID=$(oci network vcn list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data.id // empty')
           fi
           
           if [ -z "$VCN_ID" ] || [ "$VCN_ID" == "null" ]; then
             echo "No se encontró ninguna VCN existente. El límite de red podría estar lleno."
             echo "Buscando VCNs antiguas para eliminarlas automáticamente y liberar espacio..."
-            
             ALL_VCNS=$(oci network vcn list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[].id // empty')
-            
             if [ -n "$ALL_VCNS" ]; then
               for OLD_VCN in $ALL_VCNS; do
                 echo "Eliminando dependencias de la VCN antigua: [$OLD_VCN]..."
-                
                 SUBNETS=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$OLD_VCN" --output json 2>/dev/null | jq -r '.data[].id // empty')
                 for SUB in $SUBNETS; do
                   if [ -n "$SUB" ]; then
@@ -71,7 +65,6 @@ jobs:
                     oci network subnet delete --subnet-id "$SUB" --force 2>/dev/null || true
                   fi
                 done
-                
                 IGS=$(oci network internet-gateway list --compartment-id "$TENANCY_ID" --vcn-id "$OLD_VCN" --output json 2>/dev/null | jq -r '.data[].id // empty')
                 for IG in $IGS; do
                   if [ -n "$IG" ]; then
@@ -79,29 +72,23 @@ jobs:
                     oci network internet-gateway delete --ig-id "$IG" --force 2>/dev/null || true
                   fi
                 done
-                
                 echo "Borrando estructura principal de la VCN..."
                 oci network vcn delete --vcn-id "$OLD_VCN" --force 2>/dev/null || true
                 sleep 5
               done
             fi
-            
             echo "Espacio liberado. Creando la nueva red corporativa..."
             VCN_DATA=$(oci network vcn create --compartment-id "$TENANCY_ID" --display-name "vcn-hellencommerce" --cidr-block "10.0.0.0/16" --output json)
             VCN_ID=$(echo "$VCN_DATA" | jq -r '.data.id')
-            
             IG_DATA=$(oci network internet-gateway create --compartment-id "$TENANCY_ID" --display-name "ig-hellencommerce" --is-enabled true --vcn-id "$VCN_ID" --output json)
             IG_ID=$(echo "$IG_DATA" | jq -r '.data.id')
-            
             RT_ID=$(oci network vcn get --vcn-id "$VCN_ID" --output json | jq -r '.data."default-route-table-id"')
             oci network route-table update --rt-id "$RT_ID" --route-rules "[{\"cidrBlock\":\"0.0.0.0/0\",\"networkEntityId\":\"$IG_ID\"}]" --output json > /dev/null
-            
             SUBNET_DATA=$(oci network subnet create --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --display-name "subnet-hellencommerce" --cidr-block "10.0.0.0/24" --route-table-id "$RT_ID" --prohibit-public-ip-on-vnic false --output json)
             SUBNET_ID=$(echo "$SUBNET_DATA" | jq -r '.data.id')
           else
             echo "Utilizando VCN existente con ID: [$VCN_ID]"
-            SUBNET_ID=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --output json 2>/dev/null | jq -r '.data[0].id // empty')
-            
+            SUBNET_ID=$(oci network subnet list --compartment-id "$TENANCY_ID" --vcn-id "$VCN_ID" --output json 2>/dev/null | jq -r '.data.id // empty')
             if [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
               echo "Creando subred pública..."
               RT_ID=$(oci network vcn get --vcn-id "$VCN_ID" --output json | jq -r '.data."default-route-table-id"')
@@ -114,7 +101,6 @@ jobs:
           
           echo "=== FASE 2: PREPARACIÓN DE SCRIPTS Y LLAVES ==="
           echo "${{ secrets.OCI_SSH_PUBLIC_KEY }}" > oracle_hellen.pub
-          
           cat << 'EOF' > cloud_init_ubuntu.sh
           #!/bin/bash
           sleep 15
@@ -124,7 +110,6 @@ jobs:
           EOF
           
           echo "=== FASE 3: BÚSQUEDA DINÁMICA DE UBUNTU 24.04 ARM ==="
-          # Eliminamos por completo el parámetro --query problemático y usamos jq para parsear el JSON de salida sin errores sintácticos
           IMAGE_ID=$(oci compute image list \
             --compartment-id "$TENANCY_ID" \
             --shape "VM.Standard.A1.Flex" \
@@ -134,43 +119,32 @@ jobs:
             
           if [ -z "$IMAGE_ID" ] || [ "$IMAGE_ID" == "null" ]; then
             echo "Aviso: No se encontró Ubuntu 24.04 específico. Buscando cualquier versión de Ubuntu ARM disponible..."
-            IMAGE_ID=$(oci compute image list \
-              --compartment-id "$TENANCY_ID" \
-              --shape "VM.Standard.A1.Flex" \
-              --operating-system "Canonical Ubuntu" \
-              --sort-by "TIMECREATED" \
-              --output json 2>/dev/null | jq -r '.data[0].id // empty')
+            IMAGE_ID=$(oci compute image list --compartment-id "$TENANCY_ID" --shape "VM.Standard.A1.Flex" --operating-system "Canonical Ubuntu" --sort-by "TIMECREATED" --output json 2>/dev/null | jq -r '.data.id // empty')
           fi
           
           if [ -z "$IMAGE_ID" ] || [ "$IMAGE_ID" == "null" ]; then
-            echo "❌ Error Crítico en Fase 3: No se detectó ninguna imagen válida de Ubuntu ARM compatible en tu compartimento corporativo."
+            echo "❌ Error Crítico en Fase 3: No se detectó ninguna imagen válida de Ubuntu ARM compatible."
             exit 1
           fi
-          
           echo "ID de Imagen Ubuntu ARM detectado con éxito: [$IMAGE_ID]"
           
           echo "=== FASE 4: BUCLE DE ADQUISICIÓN LIMITADO ==="
           START_TIME=$(date +%s)
-          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[0].name // empty')
+          AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data.name // empty')
           
           if [ -z "$AD_NAME" ] || [ -z "$SUBNET_ID" ] || [ "$SUBNET_ID" == "null" ]; then
             echo "❌ Error Crítico: Parámetros base de red o dominio vacíos."
             exit 1
           fi
-
-          # PRUEBA RÁPIDA: Límite de tiempo fijado en 5 minutos (300 segundos)
-          # NOTA: Cuando funcione, cámbialo a: TIME_LIMIT=$(( 5 * 3600 + 50 * 60 ))
-          TIME_LIMIT=301
-
+          
+          TIME_LIMIT=300
+          
           while true; do
             CURRENT_TIME=$(date +%s)
-            ELAPSED=$(( CURRENT_TIME - START_TIME ))
-
-            # VALIDACIÓN DE TIEMPO LÍMITE PARA ACTIVAR AUTORELEVO
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            
             if [ $ELAPSED -ge $TIME_LIMIT ]; then
               echo "⏱ Límite de tiempo alcanzado ($((ELAPSED / 60)) min). Activando autorelevo..."
-              
-              # Capturamos la respuesta HTTP y el código de estado de GitHub
               HTTP_RESPONSE=$(curl -L -s -w " HTTP_STATUS:%{http_code}" \
                 -X POST \
                 -H "Accept: application/vnd.github+json" \
@@ -178,10 +152,7 @@ jobs:
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 https://github.com \
                 -d '{"event_type": "retrigger-oracle-loop"}')
-              
               echo "Respuesta del servidor de GitHub: $HTTP_RESPONSE"
-              
-              # Verificamos si la API respondió con éxito (Código 204 No Content)
               if echo "$HTTP_RESPONSE" | grep -q "HTTP_STATUS:204"; then
                 echo "✅ Comando de relevo enviado con éxito a GitHub Actions. Cerrando."
                 exit 0
@@ -190,29 +161,9 @@ jobs:
                 exit 1
               fi
             fi
-
-#            if [ $ELAPSED -ge $TIME_LIMIT ]; then
-#              echo "⏱ Límite de tiempo alcanzado ($((ELAPSED / 60)) min). Activando autorelevo..."
-              
-#              # LLAMADA CORRECTA A LA API DE GITHUB
-#              curl -L \
-#                -X POST \
-#                -H "Accept: application/vnd.github+json" \
-#                -H "Authorization: Bearer $GITHUB_TOKEN" \
-#                -H "X-GitHub-Api-Version: 2022-11-28" \
-#                https://github.com \
-#                -d '{"event_type": "retrigger-oracle-loop"}'
-              
-#              echo "✅ Comando de relevo enviado con éxito a GitHub Actions. Cerrando."
-#              exit 0
-#            fi
-
+            
             echo "Consultando disponibilidad en ($AD_NAME)..."
-            
-            # PROTECCIÓN: Desactivar detención por error para que no muera el script si Oracle dice 'No hay capacidad'
             set +e
-            
-            # Lanzamos la petición de creación idéntica a tu script ANTERIOR (Robusta)
             RESPONSE=$(oci compute instance launch \
               --availability-domain "$AD_NAME" \
               --compartment-id "$TENANCY_ID" \
@@ -228,17 +179,16 @@ jobs:
               --vnic-display-name "vnic-hellencommerce" \
               --assign-public-ip true \
               --ssh-authorized-keys-file "oracle_hellen.pub" 2>&1)
-            
             ESTADO_COMANDO=$?
-            # Reactivar el modo estricto de Bash
             set -e
-
-            # Validar éxito del aprovisionamiento
+            
             if [ $ESTADO_COMANDO -eq 0 ] && [ -n "$RESPONSE" ]; then
               echo "🎉 ¡VICTORIA! Instancia aprovisionada con éxito."
               rm -f cloud_init_ubuntu.sh oracle_hellen.pub
               exit 0
             fi
+            
+            echo "Aviso de la API de Oracle o Capacidad Máxima alcanzada:"
 
             # Captura limpia de logs sin romper el bucle
             echo "Aviso de la API de Oracle o Capacidad Máxima alcanzada:"
