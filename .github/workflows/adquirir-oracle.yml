@@ -160,7 +160,7 @@ jobs:
 
           # PRUEBA RÁPIDA: Límite de tiempo fijado en 5 minutos (300 segundos)
           # NOTA: Cuando funcione, cámbialo a: TIME_LIMIT=$(( 5 * 3600 + 50 * 60 ))
-          TIME_LIMIT=300
+          TIME_LIMIT=301
 
           while true; do
             CURRENT_TIME=$(date +%s)
