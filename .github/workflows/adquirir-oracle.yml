@@ -149,7 +149,7 @@ jobs:
           
           echo "ID de Imagen Ubuntu ARM detectado con éxito: [$IMAGE_ID]"
           
-          echo "=== FASE 4: BUCLE DE ADQUISICIÓN LIMITADO ==="
+                    echo "=== FASE 4: BUCLE DE ADQUISICIÓN LIMITADO ==="
           START_TIME=$(date +%s)
           AD_NAME=$(oci iam availability-domain list --compartment-id "$TENANCY_ID" --output json 2>/dev/null | jq -r '.data[0].name // empty')
           
@@ -158,10 +158,8 @@ jobs:
             exit 1
           fi
 
-          # Definimos el límite seguro de tiempo (5 horas y 50 minutos)
-          # TIME_LIMIT=$(( 5 * 3600 + 50 * 60 ))
-
           # PRUEBA RÁPIDA: Límite de tiempo fijado en 5 minutos (300 segundos)
+          # NOTA: Cuando funcione, cámbialo a: TIME_LIMIT=$(( 5 * 3600 + 50 * 60 ))
           TIME_LIMIT=300
 
           while true; do
@@ -172,6 +170,7 @@ jobs:
             if [ $ELAPSED -ge $TIME_LIMIT ]; then
               echo "⏱ Límite de tiempo alcanzado ($((ELAPSED / 60)) min). Activando autorelevo..."
               
+              # LLAMADA CORRECTA A LA API DE GITHUB
               curl -L \
                 -X POST \
                 -H "Accept: application/vnd.github+json" \
@@ -186,33 +185,40 @@ jobs:
 
             echo "Consultando disponibilidad en ($AD_NAME)..."
             
-            # Lanzamos la petición de creación a Oracle
+            # PROTECCIÓN: Desactivar detención por error para que no muera el script si Oracle dice 'No hay capacidad'
+            set +e
+            
+            # Lanzamos la petición de creación idéntica a tu script ANTERIOR (Robusta)
             RESPONSE=$(oci compute instance launch \
-              --compartment-id "$TENANCY_ID" \
               --availability-domain "$AD_NAME" \
+              --compartment-id "$TENANCY_ID" \
               --shape "VM.Standard.A1.Flex" \
-              --shape-config '{"ocpus":1,"memoryInGBs":6}' \
-              --subnet-id "$SUBNET_ID" \
+              --shape-config '{"ocpus":2,"memoryInGBs":12}' \
+              --boot-volume-size-in-gbs 100 \
+              --is-pv-encryption-in-transit-enabled true \
+              --instance-options '{"areLegacyImdsEndpointsDisabled":true}' \
+              --user-data-file "cloud_init_ubuntu.sh" \
+              --display-name "servidor-bunker-hellencommerce" \
               --image-id "$IMAGE_ID" \
-              --display-name "Instancia-Oracle-Free" \
-              --metadata "{\"ssh_authorized_keys\": \"$(cat oracle_hellen.pub)\"}" \
-              --user-data-file cloud_init_ubuntu.sh \
-              --output json 2>&1)
+              --subnet-id "$SUBNET_ID" \
+              --vnic-display-name "vnic-hellencommerce" \
+              --assign-public-ip true \
+              --ssh-authorized-keys-file "oracle_hellen.pub" 2>&1)
+            
+            ESTADO_COMANDO=$?
+            # Reactivar el modo estricto de Bash
+            set -e
 
-            # Si el JSON contiene un id de instancia, termina con éxito
-            if echo "$RESPONSE" | jq -e '.data.id' >/dev/null 2>&1; then
-              echo "🎉 ¡ÉXITO TOTAL! Instancia adquirida correctamente."
-              echo "$RESPONSE" | jq '.data'
+            # Validar éxito del aprovisionamiento
+            if [ $ESTADO_COMANDO -eq 0 ] && [ -n "$RESPONSE" ]; then
+              echo "🎉 ¡VICTORIA! Instancia aprovisionada con éxito."
+              rm -f cloud_init_ubuntu.sh oracle_hellen.pub
               exit 0
             fi
 
-            # Captura de error por falta de capacidad
-            if echo "$RESPONSE" | grep -q "Out of host capacity"; then
-              echo "⚠️ Capacidad máxima alcanzada en Oracle (Out of host capacity)."
-            else
-              echo "Log de la API de Oracle:"
-              echo "$RESPONSE"
-            fi
+            # Captura limpia de logs sin romper el bucle
+            echo "Aviso de la API de Oracle o Capacidad Máxima alcanzada:"
+            echo "$RESPONSE" | grep -E "Out of capacity|TooManyRequests|InternalServerError|Out of host capacity" || echo "Detalle: $RESPONSE"
 
             echo "Esperando 60 segundos para el siguiente intento..."
             sleep 60
