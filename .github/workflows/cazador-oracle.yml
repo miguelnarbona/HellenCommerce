@@ -145,6 +145,7 @@ jobs:
             
             if [ $ELAPSED -ge $TIME_LIMIT ]; then
               echo "⏱ Límite de tiempo alcanzado ($((ELAPSED / 60)) min). Activando autorelevo..."
+              
               HTTP_RESPONSE=$(curl -L -s -w " HTTP_STATUS:%{http_code}" \
                 -X POST \
                 -H "Accept: application/vnd.github+json" \
@@ -152,6 +153,7 @@ jobs:
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 https://github.com \
                 -d '{"event_type": "retrigger-oracle-loop"}')
+                
               echo "Respuesta del servidor de GitHub: $HTTP_RESPONSE"
               if echo "$HTTP_RESPONSE" | grep -q "HTTP_STATUS:204"; then
                 echo "✅ Comando de relevo enviado con éxito a GitHub Actions. Cerrando."
@@ -187,10 +189,7 @@ jobs:
               rm -f cloud_init_ubuntu.sh oracle_hellen.pub
               exit 0
             fi
-            
-            echo "Aviso de la API de Oracle o Capacidad Máxima alcanzada:"
 
-            # Captura limpia de logs sin romper el bucle
             echo "Aviso de la API de Oracle o Capacidad Máxima alcanzada:"
             echo "$RESPONSE" | grep -E "Out of capacity|TooManyRequests|InternalServerError|Out of host capacity" || echo "Detalle: $RESPONSE"
 
