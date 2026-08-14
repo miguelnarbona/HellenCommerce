@@ -137,7 +137,7 @@ jobs:
             exit 1
           fi
           
-          TIME_LIMIT=300
+          TIME_LIMIT=180
           
           while true; do
             CURRENT_TIME=$(date +%s)
