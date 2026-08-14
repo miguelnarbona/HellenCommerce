@@ -24,7 +24,7 @@ ENV LLM_MODE=online \
 LABEL org.opencontainers.image.source=https://github.com
 
 # Copiar e instalar dependencias unificadas
-COPY services/requirements.txt ./requirements.txt
+COPY requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt
 
 # Copiar el script de entrada y darle permisos de ejecución

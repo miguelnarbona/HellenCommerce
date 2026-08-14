@@ -26,7 +26,8 @@ ENV LLM_MODE=online \
 LABEL org.opencontainers.image.source=https://github.com
 
 # Copiar requirements primero (cache layer)
-COPY fastapi_service/requirements.txt /app/requirements.txt
+# COPY fastapi_service/requirements.txt /app/requirements.txt
+COPY requirements.txt /app/requirements.txt
 
 RUN pip install -r requirements.txt
 
