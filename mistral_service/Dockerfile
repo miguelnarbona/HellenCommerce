@@ -17,7 +17,7 @@ ENV LLM_MODE=online \
 LABEL org.opencontainers.image.source=https://github.com
 
 # Copiar requirements primero (cache layer)
-COPY requirements.txt /app/requirements.txt
+COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
