@@ -21,7 +21,7 @@ ENV PIP_DEFAULT_TIMEOUT=300 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
-COPY requirements.txt .
+COPY worker_service/requirements.txt .
 
 RUN pip install --user -r requirements.txt
 

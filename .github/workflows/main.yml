@@ -19,31 +19,31 @@ jobs:
       matrix:
         include:
           - name: fastapi_service
-            context: ./fastapi_service
+            context: .
             file: ./fastapi_service/Dockerfile
 
           - name: intent_service
-            context: ./intent_service
+            context: .
             file: ./intent_service/Dockerfile
 
           - name: logging_service
-            context: ./logging_service
+            context: .
             file: ./logging_service/Dockerfile
 
           - name: mistral_service
-            context: ./mistral_service
+            context: .
             file: ./mistral_service/Dockerfile
 
           - name: worker_service
-            context: ./worker_service
+            context: .
             file: ./worker_service/Dockerfile
 
           - name: map_service
-            context: ./map_service
+            context: .
             file: ./map_service/Dockerfile
 
           - name: services
-            context: ./services
+            context: .
             file: ./services/Dockerfile
 
     steps:

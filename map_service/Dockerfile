@@ -12,7 +12,7 @@ LABEL org.opencontainers.image.source=https://github.com
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements e instalar
-COPY requirements.txt .
+COPY map_service/requirements.txt .
 
 ENV PIP_DEFAULT_TIMEOUT=2000
 ENV PIP_RETRIES=50

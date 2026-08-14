@@ -17,7 +17,7 @@ ENV LLM_MODE=online \
 LABEL org.opencontainers.image.source=https://github.com
 
 # Copiar requirements primero (cache layer)
-COPY requirements.txt .
+COPY mistral_service/requirements.txt .
 
 RUN pip install -r requirements.txt
 
