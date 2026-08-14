@@ -47,7 +47,7 @@ jobs:
             file: ./services/Dockerfile
 
     steps:
-      # PASO 1: Liberación agresiva de espacio en disco (Evita problemas de almacenamiento)
+      # PASO 1: Liberación agresiva de espacio en disco (Evita problemas de almacenamiento).
       - name: Free Disk Space (Aggressive Cleanup)
         run: |
           sudo rm -rf /usr/share/dotnet
