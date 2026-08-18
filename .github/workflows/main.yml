@@ -9,11 +9,48 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build-and-push:
+  # PASO PREVIO: Detectar qué carpetas cambiaron en este commit
+  changes:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write # Permiso necesario para publicar en GHCR
+    outputs:
+      fastapi_service: ${{ steps.filter.outputs.fastapi_service }}
+      intent_service: ${{ steps.filter.outputs.intent_service }}
+      logging_service: ${{ steps.filter.outputs.logging_service }}
+      mistral_service: ${{ steps.filter.outputs.mistral_service }}
+      worker_service: ${{ steps.filter.outputs.worker_service }}
+      map_service: ${{ steps.filter.outputs.map_service }}
+      services: ${{ steps.filter.outputs.services }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check for file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            fastapi_service: ['fastapi_service/**']
+            intent_service: ['intent_service/**']
+            logging_service: ['logging_service/**']
+            mistral_service: ['mistral_service/**']
+            worker_service: ['worker_service/**']
+            map_service: ['map_service/**']
+            services: ['services/**']
+
+          # De ser necesario agregar arriba en el filtro
+          #  fastapi_service: ['fastapi_service/**', '*']
+          #  intent_service: ['intent_service/**', '*']
+          # (El asterisco * suelto al final significa: 
+          # "si cambia cualquier archivo en la raíz del proyecto, activa también este servicio").
+
+  # JOB DE COMPILACIÓN (Modificado)
+  build-and-push:
+    needs: changes # Espera a que el filtro verifique los cambios
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -21,33 +58,43 @@ jobs:
           - name: fastapi_service
             context: .
             file: ./fastapi_service/Dockerfile
+            key: fastapi_service
 
           - name: intent_service
             context: .
             file: ./intent_service/Dockerfile
+            key: intent_service
 
           - name: logging_service
             context: .
             file: ./logging_service/Dockerfile
+            key: logging_service
 
           - name: mistral_service
             context: .
             file: ./mistral_service/Dockerfile
+            key: mistral_service
 
           - name: worker_service
             context: .
             file: ./worker_service/Dockerfile
+            key: worker_service
 
           - name: map_service
             context: .
             file: ./map_service/Dockerfile
+            key: map_service
 
           - name: services
             context: .
             file: ./services/Dockerfile
+            key: services
+
+    # ESTA LÍNEA ES LA MAGIA: Solo corre este elemento de la matriz si su carpeta cambió
+    if: ${{ needs.changes.outputs[matrix.key] == 'true' }}
 
     steps:
-      # PASO 1: Liberación agresiva de espacio en disco (Evita problemas de almacenamiento).
+      # PASO 1: Liberación agresiva de espacio en disco
       - name: Free Disk Space (Aggressive Cleanup)
         run: |
           sudo rm -rf /usr/share/dotnet
@@ -98,6 +145,5 @@ jobs:
           tags: |
             ghcr.io/${{ env.IMAGE_OWNER }}/${{ env.REPO_NAME }}-${{ matrix.name }}:latest
             ghcr.io/${{ env.IMAGE_OWNER }}/${{ env.REPO_NAME }}-${{ matrix.name }}:${{ github.sha }}
-          # Almacenamiento en caché en la nube de GitHub para acelerar compilaciones futuras
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
