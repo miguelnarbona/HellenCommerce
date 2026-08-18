@@ -19,7 +19,8 @@ from pydantic import BaseModel
 # llama_cpp se importa de forma lazy solo en modo local para no romper entornos cloud
 
 # Motor semántico interno
-from intent_service.intent_semantic import detectar_intencion_semantica
+# from intent_service.intent_semantic import detectar_intencion_semantica
+from intent_semantic import detectar_intencion_semantica
 
 # ============================================================
 # CONFIGURACIÓN
