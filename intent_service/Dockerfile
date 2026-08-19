@@ -28,6 +28,7 @@ LABEL org.opencontainers.image.source=https://github.com
 COPY intent_service/requirements.txt .
 
 RUN pip install -r requirements.txt
+RUN python -m spacy download es_core_news_lg
 
 # Copiar el cÃ³digo del servicio
 COPY intent_service/main.py /app/main.py
