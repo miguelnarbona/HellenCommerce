@@ -15,7 +15,11 @@ from app.core.pipeline.bk_tree import BKTree
 # -----------------------------------------------------------
 BASE_DIR = os.path.dirname(__file__)
 DICCIONARIO_FILE = os.path.join(BASE_DIR, "custom_dict")
-STANZA_DIR = r"c:\HellenData\StanfordNLP\stanza"
+# Parth para Windows
+# STANZA_DIR = r"c:\HellenData\StanfordNLP\stanza"
+
+# Path para Linux
+STANZA_DIR = r"/home/mnf/HellenData/StanfordNLP/stanza"
 
 if not os.path.exists(DICCIONARIO_FILE):
     raise FileNotFoundError("custom_dict no encontrado")
