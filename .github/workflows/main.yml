@@ -85,7 +85,8 @@ jobs:
             key: services
 
     # Solo corre este elemento de la matriz si su carpeta cambió
-    if: ${{ needs.changes.outputs[matrix.key] == 'true' }}
+    if: needs.changes.outputs[matrix.key] == 'true'
+
 
     steps:
       # PASO 1: Liberación agresiva de espacio en disco
