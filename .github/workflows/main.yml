@@ -29,14 +29,14 @@ jobs:
         uses: dorny/paths-filter@v3
         id: filter
         with:
-          filters: |
-            fastapi_service: ['fastapi_service/**']
-            intent_service: ['intent_service/**']
-            logging_service: ['logging_service/**']
-            mistral_service: ['mistral_service/**']
-            worker_service: ['worker_service/**']
-            map_service: ['map_service/**']
-            services: ['services/**']
+          filters:
+            fastapi_service: 'fastapi_service/**'
+            intent_service: 'intent_service/**'
+            logging_service: 'logging_service/**'
+            mistral_service: 'mistral_service/**'
+            worker_service: 'worker_service/**'
+            map_service: 'map_service/**'
+            services: 'services/**'
 
   # JOB DE COMPILACIÓN
   build-and-push:
@@ -84,9 +84,8 @@ jobs:
             file: ./services/Dockerfile
             key: services
 
-    # Solo corre este elemento de la matriz si su carpeta cambió
+    # Expresión nativa corregida sin llaves contenedoras externas
     if: needs.changes.outputs[matrix.key] == 'true'
-
 
     steps:
       # PASO 1: Liberación agresiva de espacio en disco
@@ -98,14 +97,14 @@ jobs:
           sudo rm -rf /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force
 
-      # PASO 2: Forzar el nombre del dueño y repositorio a minúsculas usando funciones nativas
+      # PASO 2: Forzar el nombre del dueño y repositorio a minúsculas usando funciones nativas limpias
       - name: Downcase repository owner and name
         run: |
-          echo "IMAGE_OWNER=${{降低_OWNER}}" >> $GITHUB_ENV
-          echo "REPO_NAME=${{降低_REPO}}" >> $GITHUB_ENV
+          echo "IMAGE_OWNER=${LOW_OWNER}" >> $GITHUB_ENV
+          echo "REPO_NAME=${LOW_REPO}" >> $GITHUB_ENV
         env:
-          降低_OWNER: ${{ lower(github.repository_owner) }}
-          降低_REPO: ${{ lower(github.event.repository.name) }}
+          LOW_OWNER: ${{ lower(github.repository_owner) }}
+          LOW_REPO: ${{ lower(github.event.repository.name) }}
 
       # PASO 3: Descargar el repositorio
       - name: Checkout repository
