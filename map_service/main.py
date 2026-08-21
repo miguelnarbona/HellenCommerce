@@ -10,7 +10,7 @@ NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
 
 OSRM_SERVICES = {
     "cu": "http://osrm_cuba:5000",
-    "mx": "http://osrm_mexico:5000",
+    "ca": "http://osrm_canada:5000",
     "us": "http://osrm_usa:5000",
 }
 
@@ -26,7 +26,7 @@ def detectar_pais(lat: float, lon: float) -> str:
         "addressdetails": 1,
     }
     headers = {
-        "User-Agent": "hellencommerce-map-service/1.0"
+        "User-Agent": "hellencommerce-map_services/1.0"
     }
     r = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=5)
     r.raise_for_status()

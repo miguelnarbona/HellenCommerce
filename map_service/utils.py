@@ -4,7 +4,7 @@ NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
 
 OSRM_SERVICES = {
     "cu": "http://osrm_cuba:5000",
-    "mx": "http://osrm_mexico:5000",
+    "ca": "http://osrm_canada:5000",
     "us": "http://osrm_usa:5000",
 }
 
@@ -14,7 +14,7 @@ DEFAULT_OSRM = "http://osrm_cuba:5000"
 def detectar_pais(lat: float, lon: float) -> str:
     """
     Detecta el país usando reverse geocoding (Nominatim).
-    Devuelve el código ISO del país en minúsculas (ej: 'cu', 'mx', 'us').
+    Devuelve el código ISO del país en minúsculas (ej: 'cu', 'ca', 'us').
     """
     params = {
         "lat": lat,
