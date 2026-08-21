@@ -38,13 +38,7 @@ jobs:
             map_service: ['map_service/**']
             services: ['services/**']
 
-          # De ser necesario agregar arriba en el filtro
-          #  fastapi_service: ['fastapi_service/**', '*']
-          #  intent_service: ['intent_service/**', '*']
-          # (El asterisco * suelto al final significa: 
-          # "si cambia cualquier archivo en la raíz del proyecto, activa también este servicio").
-
-  # JOB DE COMPILACIÓN (Modificado)
+  # JOB DE COMPILACIÓN
   build-and-push:
     needs: changes # Espera a que el filtro verifique los cambios
     runs-on: ubuntu-latest
@@ -90,7 +84,7 @@ jobs:
             file: ./services/Dockerfile
             key: services
 
-    # ESTA LÍNEA ES LA MAGIA: Solo corre este elemento de la matriz si su carpeta cambió
+    # Solo corre este elemento de la matriz si su carpeta cambió
     if: ${{ needs.changes.outputs[matrix.key] == 'true' }}
 
     steps:
@@ -103,14 +97,14 @@ jobs:
           sudo rm -rf /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force
 
-      # PASO 2: Forzar el nombre del dueño y repositorio a minúsculas
+      # PASO 2: Forzar el nombre del dueño y repositorio a minúsculas usando funciones nativas
       - name: Downcase repository owner and name
         run: |
-          echo "IMAGE_OWNER=${OWNER,,}" >> $GITHUB_ENV
-          echo "REPO_NAME=${REPO,,}" >> $GITHUB_ENV
+          echo "IMAGE_OWNER=${{降低_OWNER}}" >> $GITHUB_ENV
+          echo "REPO_NAME=${{降低_REPO}}" >> $GITHUB_ENV
         env:
-          OWNER: '${{ github.repository_owner }}'
-          REPO: '${{ github.event.repository.name }}'
+          降低_OWNER: ${{ lower(github.repository_owner) }}
+          降低_REPO: ${{ lower(github.event.repository.name) }}
 
       # PASO 3: Descargar el repositorio
       - name: Checkout repository
