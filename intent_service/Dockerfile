@@ -2,7 +2,7 @@
 
 WORKDIR /app
 
-# Dependencias del sistema mÃ­nimas para spacy/scipy (modo online no necesita llama-cpp)
+# Dependencias del sistema mínimas
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         curl \
@@ -18,27 +18,23 @@ ENV PIP_DEFAULT_TIMEOUT=300 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# ConfiguraciÃ³n del servicio (override vÃ­a docker-compose)
 ENV LLM_MODE=online \
     HF_API_KEY=""
 
 LABEL org.opencontainers.image.source=https://github.com
 
-# Copiar requirements primero (cache layer)
+# Copiar requirements primero (capa de caché eficiente)
 COPY intent_service/requirements.txt .
-
 RUN pip install -r requirements.txt
 RUN python -m spacy download es_core_news_lg
 
-# Copiar el código del servicio
-COPY intent_service/main.py /app/main.py
-COPY intent_service/intent_semantic.py /app/intent_semantic.py
-COPY intent_service/__init__.py /app/__init__.py
+# ==========================================
+# 🚀 LA SOLUCIÓN LIMPIA: COPIAR TODO EL CONTENIDO
+# ==========================================
+# Copiamos absolutamente TODO lo que está dentro de la carpeta local hacia la raíz /app
+COPY intent_service/ /app/
 
-# 🚀 NUEVA LÍNEA: Copiar el diccionario al contenedor
-COPY intent_service/custom_dict /app/custom_dict
-
-# Copiar carpetas compartidas del proyecto
+# Copiar carpetas compartidas globales del proyecto (si existen en la raíz del repositorio)
 COPY app /app/app
 
 EXPOSE 9010
