@@ -11,6 +11,12 @@ services:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
+      # - ./data/sqlite_store:/sqlite
+      # - /home/mnf/HellenData/StanfordNLP:/models/stanza
+      # - /home/mnf/HellenData/osrm:/maps
+      # - /home/mnf/HellenData/chroma_store:/chroma_store
+      # - /home/mnf/HellenData/qdrant_store:/qdrant_store
+      # - /home/mnf/HellenData/sqlite_store:/sqlite
     networks:
       - hellen_network
 

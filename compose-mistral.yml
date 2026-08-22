@@ -2,8 +2,8 @@
 
 services:
   mistral_service:
-    image: ghcr.io/${GHCR_OWNER}/mistral_service:latest
-    container_name: mistral_service
+    image: ghcr.io/${GHCR_OWNER}/hellencommerce-mistral_services:latest
+    container_name: bunker-mistral_service
     build:
       context: .
       dockerfile: mistral_service/Dockerfile
@@ -19,6 +19,13 @@ services:
       - ./app:/app/app
       # Volumen de modelos locales (opcional, solo en modo local)
       # - /mnt/data/HellenData/Qwen:/models/Qwen
+      - ./data/logs:/app/logs
+      # - ./data/sqlite_store:/sqlite
+      # - /home/mnf/HellenData/StanfordNLP:/models/stanza
+      # - /home/mnf/HellenData/osrm:/maps
+      # - /home/mnf/HellenData/chroma_store:/chroma_store
+      # - /home/mnf/HellenData/qdrant_store:/qdrant_store
+      # - /home/mnf/HellenData/sqlite_store:/sqlite
     networks:
       - hellen_network
     restart: unless-stopped

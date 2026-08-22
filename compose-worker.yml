@@ -2,8 +2,8 @@
 
 services:
   worker_service:
-    image: ghcr.io/${GHCR_OWNER}/worker_service:latest
-    container_name: worker_service
+    image: ghcr.io/${GHCR_OWNER}/hellencommerce-worker_service:latest
+    container_name: bunker-worker_service
     build:
       context: .
       dockerfile: worker_service/Dockerfile
@@ -24,6 +24,13 @@ services:
       - ./data/sqlite_store:/sqlite
       # VolÃºmenes de modelos locales (solo necesarios si LLM_MODE=local)
       # - /mnt/data/HellenData/minilm:/models/minilm
+      - ./data/logs:/app/logs
+      # - ./data/sqlite_store:/sqlite
+      # - /home/mnf/HellenData/StanfordNLP:/models/stanza
+      # - /home/mnf/HellenData/osrm:/maps
+      # - /home/mnf/HellenData/chroma_store:/chroma_store
+      # - /home/mnf/HellenData/qdrant_store:/qdrant_store
+      # - /home/mnf/HellenData/sqlite_store:/sqlite
     networks:
       - hellen_network
     restart: unless-stopped

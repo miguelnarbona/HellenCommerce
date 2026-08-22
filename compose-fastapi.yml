@@ -2,8 +2,8 @@
 
 services:
   fastapi_service:
-    image: ghcr.io/${GHCR_OWNER}/fastapi_service:latest
-    container_name: fastapi_service
+    image: ghcr.io/${GHCR_OWNER}/hellencommerce-fastapi_service:latest
+    container_name: bunker_fastapi_service
     build:
       context: .
       dockerfile: fastapi_service/Dockerfile
@@ -24,7 +24,12 @@ services:
     volumes:
       - ./app:/app/app
       - ./app/prompts:/app/prompts
-      - ./data/sqlite_store:/sqlite
+      # - ./data/sqlite_store:/sqlite
+      # - /home/mnf/HellenData/StanfordNLP:/models/stanza
+      # - /home/mnf/HellenData/osrm:/maps
+      # - /home/mnf/HellenData/chroma_store:/chroma_store
+      # - /home/mnf/HellenData/qdrant_store:/qdrant_store
+      # - /home/mnf/HellenData/sqlite_store:/sqlite
     networks:
       - hellen_network
     restart: unless-stopped

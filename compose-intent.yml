@@ -2,8 +2,8 @@
 
 services:
   intent_service:
-    image: ghcr.io/${GHCR_OWNER}/intent_service:latest
-    container_name: intent_service
+    image: ghcr.io/${GHCR_OWNER}/hellencommerce-intent_service:latest
+    container_name: bunker_intent_service
     build:
       context: .
       dockerfile: intent_service/Dockerfile
@@ -15,6 +15,12 @@ services:
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
       - ./app:/app/app
+      # - ./data/sqlite_store:/sqlite
+      # - /home/mnf/HellenData/StanfordNLP:/models/stanza
+      # - /home/mnf/HellenData/osrm:/maps
+      # - /home/mnf/HellenData/chroma_store:/chroma_store
+      # - /home/mnf/HellenData/qdrant_store:/qdrant_store
+      # - /home/mnf/HellenData/sqlite_store:/sqlite
     networks:
       - hellen_network
     restart: unless-stopped
