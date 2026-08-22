@@ -55,37 +55,37 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: fastapi_service
+          - name: hellencommerce-fastapi_service
             context: .
             file: ./fastapi_service/Dockerfile
             key: fastapi_service
 
-          - name: intent_service
+          - name: hellencommerce-intent_service
             context: .
             file: ./intent_service/Dockerfile
             key: intent_service
 
-          - name: logging_service
+          - name: hellencommerce-logging_service
             context: .
             file: ./logging_service/Dockerfile
             key: logging_service
 
-          - name: mistral_service
+          - name: hellencommerce-mistral_service
             context: .
             file: ./mistral_service/Dockerfile
             key: mistral_service
 
-          - name: worker_service
+          - name: hellencommerce-worker_service
             context: .
             file: ./worker_service/Dockerfile
             key: worker_service
 
-          - name: map_service
+          - name: hellencommerce-map_service
             context: .
             file: ./map_service/Dockerfile
             key: map_service
 
-          - name: services
+          - name: hellencommerce-services
             context: .
             file: ./services/Dockerfile
             key: services
