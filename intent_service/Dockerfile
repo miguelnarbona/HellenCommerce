@@ -30,10 +30,13 @@ COPY intent_service/requirements.txt .
 RUN pip install -r requirements.txt
 RUN python -m spacy download es_core_news_lg
 
-# Copiar el cÃ³digo del servicio
+# Copiar el código del servicio
 COPY intent_service/main.py /app/main.py
 COPY intent_service/intent_semantic.py /app/intent_semantic.py
 COPY intent_service/__init__.py /app/__init__.py
+
+# 🚀 NUEVA LÍNEA: Copiar el diccionario al contenedor
+COPY intent_service/custom_dict /app/custom_dict
 
 # Copiar carpetas compartidas del proyecto
 COPY app /app/app
