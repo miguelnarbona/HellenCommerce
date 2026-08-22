@@ -26,7 +26,7 @@ COPY worker_service/requirements.txt .
 RUN pip install --user -r requirements.txt
 
 # ==========================================
-# ETAPA 2: Imagen Final de ProducciÃ³n (Runtime)
+# ETAPA 2: Imagen Final de Producción (Runtime)
 # ==========================================
 FROM python:3.11-slim
 
@@ -40,7 +40,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 LABEL org.opencontainers.image.source=https://github.com
 
-# Bibliotecas de runtime para sentence-transformers/chromadb
+# Bibliotecas de runtime indispensables para sentence-transformers/chromadb
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libopenblas-dev \
         libomp-dev \
@@ -49,8 +49,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Traer las dependencias compiladas desde el builder
 COPY --from=builder /root/.local /root/.local
 
-# Copiar el cÃ³digo del servicio y carpetas compartidas
-COPY worker_service/main.py /app/main.py
+# 🚀 CORREGIDO: Forzar la descarga del modelo de SpaCy en la capa final de ejecución
+RUN python -m spacy download es_core_news_lg
+
+# Copiar de forma masiva el código del servicio y las carpetas compartidas
+COPY worker_service/ /app/
 COPY app /app/app
 
 EXPOSE 9000
