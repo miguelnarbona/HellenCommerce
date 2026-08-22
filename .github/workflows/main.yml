@@ -46,10 +46,8 @@ jobs:
       contents: read
       packages: write
     
-    # Declaramos las variables aquí para que el validador de GitHub las reconozca desde el inicio
     env:
       IMAGE_OWNER: ${{ github.repository_owner }}
-      REPO_NAME: ${{ github.event.repository.name }}
 
     strategy:
       fail-fast: false
@@ -101,12 +99,11 @@ jobs:
           sudo rm -rf /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force
 
-      # PASO 2: Forzar el nombre del dueño y repositorio a minúsculas reescribiendo el entorno de forma segura
-      - name: Downcase repository owner and name
+      # PASO 2: Forzar el nombre del dueño a minúsculas
+      - name: Downcase repository owner
         if: needs.changes.outputs[matrix.key] == 'true'
         run: |
           echo "IMAGE_OWNER=$(echo "${{ env.IMAGE_OWNER }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-          echo "REPO_NAME=$(echo "${{ env.REPO_NAME }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       # PASO 3: Descargar el repositorio
       - name: Checkout repository
@@ -132,7 +129,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # PASO 7: Build multi-arquitectura y push a GHCR
+      # PASO 7: Build multi-arquitectura y push directo al paquete correcto
       - name: Build and push ${{ matrix.name }}
         if: needs.changes.outputs[matrix.key] == 'true'
         uses: docker/build-push-action@v6
@@ -144,7 +141,7 @@ jobs:
           provenance: false
           sbom: false
           tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/${{ env.REPO_NAME }}-${{ matrix.name }}:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/${{ env.REPO_NAME }}-${{ matrix.name }}:${{ github.sha }}
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+            ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.name }}:${{ github.sha }}
+          # 🚀 OBLIGATORIO: Deshabilitamos caché para forzar el copiado de todos tus ficheros nuevos
+          no-cache: true
