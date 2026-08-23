@@ -22,7 +22,11 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN pip install --default-timeout=2000 --retries=50 --no-cache-dir -r requirements.txt
 
 # Copiar código
-COPY . .
+# Copiamos absolutamente TODO lo que está dentro de la carpeta local hacia la raíz /app
+COPY map_service/ /app/
+
+# Copiar carpetas compartidas globales del proyecto (si existen en la raíz del repositorio)
+COPY app /app/app
 
 # Puerto interno de FastAPI
 EXPOSE 5000

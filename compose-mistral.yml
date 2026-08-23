@@ -2,7 +2,8 @@
 
 services:
   mistral_service:
-    image: ghcr.io/${GHCR_OWNER}/hellencommerce-mistral_services:latest
+    # 🚀 CORREGIDO: Ruta de imagen fija alineada con los paquetes reales de tu GitHub
+    image: ghcr.io/miguelnarbona/hellencommerce-mistral_service:latest
     container_name: bunker-mistral_service
     build:
       context: .
@@ -16,16 +17,12 @@ services:
       # Path del modelo GGUF local (solo relevante si LLM_MODE=local)
       - MODEL_PATH=/models/Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf
     volumes:
-      - ./app:/app/app
-      # Volumen de modelos locales (opcional, solo en modo local)
-      # - /mnt/data/HellenData/Qwen:/models/Qwen
-      - ./data/logs:/app/logs
-      # - ./data/sqlite_store:/sqlite
-      # - /home/mnf/HellenData/StanfordNLP:/models/stanza
-      # - /home/mnf/HellenData/osrm:/maps
-      # - /home/mnf/HellenData/chroma_store:/chroma_store
-      # - /home/mnf/HellenData/qdrant_store:/qdrant_store
-      # - /home/mnf/HellenData/sqlite_store:/sqlite
+      # 🚀 CORREGIDO: Volumen de Stanza alineado con la ruta interna /app de tus scripts
+      - /home/mnf/HellenData/StanfordNLP/stanza:/app/StanfordNLP/stanza
+      - /home/mnf/HellenData/osrm:/maps
+      - /home/mnf/HellenData/chroma_store:/chroma_store
+      - /home/mnf/HellenData/qdrant_store:/qdrant_store
+      - /home/mnf/HellenData/sqlite_store:/sqlite
     networks:
       - hellen_network
     restart: unless-stopped
