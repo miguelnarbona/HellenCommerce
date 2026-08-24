@@ -2,18 +2,23 @@
 
 services:
   saludo_service:
-    build:
-      context: ..
-      dockerfile: saludo_service/Dockerfile
+    # 🚀 USAMOS LA IMAGEN MÁSTER UNIFICADA
+    image: ghcr.io/miguelnarbona/hellencommerce-services:latest
+    container_name: bunker_saludo_service
     ports:
       - "8018:8018"
     environment:
+      # 🚀 VARIABLES OBLIGATORIAS PARA EL ENTRYPOINT
+      - SERVICE_NAME=saludo_service
+      - SERVICE_PORT=8018
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ../app:/app/shared
-      - .:/app/saludo_service
-    depends_on:
-      - logging_service
+      # 🚀 CORREGIDO: Mapeamos la carpeta global a la ruta que Python necesita
+      - ../app:/app/app
+      # Mapeo local para mantener el código sincronizado en Debian
+      - .:/app/services/saludo_service
 
 networks:
   default:

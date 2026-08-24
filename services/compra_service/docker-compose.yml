@@ -2,18 +2,25 @@
 
 services:
   compra_service:
-    build:
-      context: ..
-      dockerfile: compra_service/Dockerfile
+    # 🚀 USAMOS LA IMAGEN MÁSTER UNIFICADA
+    image: ghcr.io/miguelnarbona/hellencommerce-services:latest
+    container_name: bunker_compra_service
     ports:
       - "8014:8014"
     environment:
+      # 🚀 INYECTAMOS LAS VARIABLES PARA EL ENTRYPOINT
+      - SERVICE_NAME=compra_service
+      - SERVICE_PORT=8014
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ../app:/app/shared
-      - .:/app/compra_service
-    depends_on:
-      - logging_service
+      # 🚀 CORREGIDO: Mapeamos la carpeta compartida global a la ruta interna real que busca Python
+      - ../app:/app/app
+      # Si necesitas editar el código del servicio de compra en vivo en Debian, mapealo a su ruta interna:
+      - .:/app/services/compra_service
+    # depends_on:
+    #   - logging_service  # Descoméntalo si el servicio de logging está en este mismo archivo YAML
 
 networks:
   default:

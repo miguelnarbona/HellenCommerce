@@ -2,18 +2,23 @@
 
 services:
   ruta_service:
-    build:
-      context: ..
-      dockerfile: ruta_service/Dockerfile
+    # 🚀 USAMOS LA IMAGEN MÁSTER UNIFICADA
+    image: ghcr.io/miguelnarbona/hellencommerce-services:latest
+    container_name: bunker_ruta_service
     ports:
       - "8020:8020"
     environment:
+      # 🚀 VARIABLES OBLIGATORIAS PARA EL ENTRYPOINT
+      - SERVICE_NAME=ruta_service
+      - SERVICE_PORT=8020
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ../app:/app/shared
-      - .:/app/ruta_service
-    depends_on:
-      - logging_service
+      # 🚀 CORREGIDO: Mapeamos la carpeta global a la ruta que Python necesita
+      - ../app:/app/app
+      # Mapeo local para mantener el código sincronizado en Debian
+      - .:/app/services/ruta_service
 
 networks:
   default:

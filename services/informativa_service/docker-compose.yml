@@ -2,18 +2,23 @@
 
 services:
   informativa_service:
-    build:
-      context: ..
-      dockerfile: informativa_service/Dockerfile
+    # 🚀 USAMOS LA IMAGEN MÁSTER UNIFICADA
+    image: ghcr.io/miguelnarbona/hellencommerce-services:latest
+    container_name: bunker_informativa_service
     ports:
       - "8015:8015"
     environment:
+      # 🚀 VARIABLES INDISPENSABLES PARA TU ENTRYPOINT
+      - SERVICE_NAME=informativa_service
+      - SERVICE_PORT=8015
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ../app:/app/shared
-      - .:/app/informativa_service
-    depends_on:
-      - logging_service
+      # 🚀 CORREGIDO: Mapeamos la carpeta global a la ruta interna que Python busca
+      - ../app:/app/app
+      # Mapeo local para que los cambios que hagas en Debian se reflejen en caliente
+      - .:/app/services/informativa_service
 
 networks:
   default:

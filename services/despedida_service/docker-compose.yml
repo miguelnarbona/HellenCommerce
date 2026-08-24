@@ -2,18 +2,23 @@
 
 services:
   despedida_service:
-    build:
-      context: ..
-      dockerfile: despedida_service/Dockerfile
+    # 🚀 USAMOS LA IMAGEN MÁSTER UNIFICADA
+    image: ghcr.io/miguelnarbona/hellencommerce-services:latest
+    container_name: bunker_despedida_service
     ports:
       - "8019:8019"
     environment:
+      # 🚀 VARIABLES OBLIGATORIAS PARA EL ENTRYPOINT
+      - SERVICE_NAME=despedida_service
+      - SERVICE_PORT=8019
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ../app:/app/shared
-      - .:/app/despedida_service
-    depends_on:
-      - logging_service
+      # 🚀 CORREGIDO: Mapeamos la carpeta global a la ruta interna que Python requiere
+      - ../app:/app/app
+      # Mapeo local de desarrollo para editar el código en vivo si lo requieres
+      - .:/app/services/despedida_service
 
 networks:
   default:

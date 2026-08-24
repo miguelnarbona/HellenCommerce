@@ -2,18 +2,23 @@
 
 services:
   contacto_service:
-    build:
-      context: ..
-      dockerfile: contacto_service/Dockerfile
+    # 🚀 USAMOS LA IMAGEN MÁSTER UNIFICADA
+    image: ghcr.io/miguelnarbona/hellencommerce-services:latest
+    container_name: bunker_contacto_service
     ports:
       - "8011:8011"
     environment:
+      # 🚀 INYECTAMOS LAS VARIABLES PARA TU ENTRYPOINT
+      - SERVICE_NAME=contacto_service
+      - SERVICE_PORT=8011
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ../app:/app/shared
-      - .:/app/contacto_service
-    depends_on:
-      - logging_service
+      # 🚀 CORREGIDO: Mapeamos la carpeta compartida global a la ruta exacta que busca Python
+      - ../app:/app/app
+      # Si necesitas editar el código del servicio de contacto en vivo, se mapea a su subcarpeta interna:
+      - .:/app/services/contacto_service
 
 networks:
   default:

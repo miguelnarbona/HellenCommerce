@@ -34,5 +34,8 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Copiar todo el código de los servicios secundarios
 COPY services/ /app/services/
 
+# 🚀 CORRECCIÓN CRÍTICA: Copiar la carpeta global "app" dentro de la ruta que Python requiere
+COPY app/ /app/app/
+
 # ENTRYPOINT para enrutar al servicio correcto
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

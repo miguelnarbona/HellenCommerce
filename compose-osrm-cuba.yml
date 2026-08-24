@@ -3,13 +3,10 @@ version: "3.9"
 services:
   osrm_cuba:
     image: osrm/osrm-backend
-    container_name: osrm_cuba
+    container_name: bunker-osrm_cuba
     command: osrm-routed /data/cuba.osrm
     volumes:
-      # - /mnt/c/HellenData/osrm/cuba:/data
-      # - ./app:/app/app
-      # - ./data/logs:/app/logs
-      # - ./data/sqlite_store:/sqlite
+      - /home/mnf/HellenData/osrm/cuba:/data/cuba
       - /home/mnf/HellenData/StanfordNLP:/models/stanza
       - /home/mnf/HellenData/osrm:/maps
       - /home/mnf/HellenData/chroma_store:/chroma_store

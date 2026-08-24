@@ -2,18 +2,23 @@
 
 services:
   transporte_service:
-    build:
-      context: ..
-      dockerfile: transporte_service/Dockerfile
+    # 🚀 USAMOS LA IMAGEN MÁSTER UNIFICADA
+    image: ghcr.io/miguelnarbona/hellencommerce-services:latest
+    container_name: bunker_transporte_service
     ports:
       - "8017:8017"
     environment:
+      # 🚀 VARIABLES OBLIGATORIAS PARA EL ENTRYPOINT
+      - SERVICE_NAME=transporte_service
+      - SERVICE_PORT=8017
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ../app:/app/shared
-      - .:/app/transporte_service
-    depends_on:
-      - logging_service
+      # 🚀 CORREGIDO: Mapeamos la carpeta global a la ruta que Python necesita
+      - ../app:/app/app
+      # Mapeo local para mantener el código sincronizado en Debian
+      - .:/app/services/transporte_service
 
 networks:
   default:

@@ -2,18 +2,23 @@
 
 services:
   servicio_service:
-    build:
-      context: ..
-      dockerfile: servicio_service/Dockerfile
+    # 🚀 USAMOS LA IMAGEN MÁSTER UNIFICADA
+    image: ghcr.io/miguelnarbona/hellencommerce-services:latest
+    container_name: bunker_servicio_service
     ports:
       - "8022:8022"
     environment:
+      # 🚀 VARIABLES OBLIGATORIAS PARA EL ENTRYPOINT
+      - SERVICE_NAME=servicio_service
+      - SERVICE_PORT=8022
+      - LLM_MODE=${LLM_MODE:-online}
+      - HF_API_KEY=${HF_API_KEY:-}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
-      - ../app:/app/shared
-      - .:/app/servicio_service
-    depends_on:
-      - logging_service
+      # 🚀 CORREGIDO: Mapeamos la carpeta global a la ruta que Python necesita
+      - ../app:/app/app
+      # Mapeo local para mantener el código sincronizado en Debian
+      - .:/app/services/servicio_service
 
 networks:
   default:
