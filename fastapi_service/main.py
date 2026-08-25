@@ -387,12 +387,24 @@ def create_product(business_id: str, data: ProductCreate):
 
 @app.post("/user/{user_id}/business/by_bounds")
 def businesses_by_bounds(user_id: str, payload: dict = Body(...)):
-    """Obtiene negocios dentro de los límites del mapa."""
-    bounds = payload["bounds"]
-    sw = bounds["_southWest"]
-    ne = bounds["_northEast"]
-    min_lat, min_lng = sw["lat"], sw["lng"]
-    max_lat, max_lng = ne["lat"], ne["lng"]
+    """Obtiene negocios dentro de los límites del mapa de forma segura."""
+    # 🚀 CORRECCIÓN CRÍTICA: Extrae 'bounds' si existe, si no, usa el payload raíz
+    bounds = payload.get("bounds", payload)
+    
+    # Extraer esquinas de forma segura con diccionarios de Leaflet nativos
+    sw = bounds.get("_southWest")
+    ne = bounds.get("_northEast")
+    
+    # Validación de seguridad: si el formato no es el correcto, evita romper el hilo
+    if not sw or not ne:
+        return {"businesses": [], "warning": "Estructura de límites inválida"}
+        
+    min_lat, min_lng = sw.get("lat"), sw.get("lng")
+    max_lat, max_lng = ne.get("lat"), ne.get("lng")
+    
+    # Evitar fallos si alguna coordenada viene corrupta o nula
+    if None in (min_lat, min_lng, max_lat, max_lng):
+        return {"businesses": [], "warning": "Coordenadas incompletas"}
     
     conn = get_db()
     cur = conn.cursor()
@@ -401,6 +413,7 @@ def businesses_by_bounds(user_id: str, payload: dict = Body(...)):
         WHERE lat BETWEEN ? AND ?
         AND lng BETWEEN ? AND ?
     """, (min_lat, max_lat, min_lng, max_lng))
+    
     results = {"businesses": [dict(r) for r in cur.fetchall()]}
     conn.close()
     return results
