@@ -18,7 +18,7 @@ ENV PIP_DEFAULT_TIMEOUT=300 \
 # Variables por defecto (override vía docker-compose)
 ENV LLM_MODE=online \
     HF_API_KEY="" \
-    SERVICE_NAME="venta_service" \
+    SERVICE_NAME="compra_service" \
     SERVICE_PORT="8014"
 
 LABEL org.opencontainers.image.source=https://github.com
