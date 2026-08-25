@@ -26,6 +26,7 @@ LABEL org.opencontainers.image.source=https://github.com
 # Copiar e instalar dependencias unificadas
 COPY services/requirements.txt .
 RUN pip install -r requirements.txt
+RUN python -m spacy download es_core_news_lg
 
 # Copiar el script de entrada y darle permisos de ejecución
 COPY services/entrypoint.sh /usr/local/bin/entrypoint.sh
