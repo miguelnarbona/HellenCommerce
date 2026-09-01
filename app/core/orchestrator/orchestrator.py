@@ -81,27 +81,27 @@ class Orchestrator:
         self.base_resources_path = base_resources_path or hc_path("app/resources")
         
         # URLs de microservicios (configurables vía environment)
-        self.intent_service_url = os.getenv("INTENT_SERVICE_URL", "http://intent_service:9010")
-        self.worker_service_url = os.getenv("WORKER_SERVICE_URL", "http://worker_service:9000")
-        self.mistral_service_url = os.getenv("MISTRAL_SERVICE_URL", "http://mistral_service:9001")
-        self.logging_ws_url = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
+        self.intent_service_url = os.getenv("INTENT_SERVICE_URL", "http://127.0.0.1:9010")
+        self.worker_service_url = os.getenv("WORKER_SERVICE_URL", "http://127.0.0.1:9000")
+        self.mistral_service_url = os.getenv("MISTRAL_SERVICE_URL", "http://127.0.0.1:9001")
+        self.logging_ws_url = os.getenv("LOGGING_WS_URL", "ws://127.0.0.1:8099/ws/logs")
         
         # URLs de servicios especializados (fan-out)
         self.specialized_services = {
-            "REGISTRO": os.getenv("REGISTRO_SERVICE_URL", "http://registro_service:8010"),
-            "CONTACTO": os.getenv("CONTACTO_SERVICE_URL", "http://contacto_service:8011"),
-            "MENSAJERIA": os.getenv("MENSAJERIA_SERVICE_URL", "http://mensajeria_service:8012"),
-            "VENTA": os.getenv("VENTA_SERVICE_URL", "http://venta_service:8013"),
-            "COMPRA": os.getenv("COMPRA_SERVICE_URL", "http://compra_service:8014"),
-            "INFORMATIVA": os.getenv("INFORMATIVA_SERVICE_URL", "http://informativa_service:8015"),
-            "NOTIFICACION": os.getenv("NOTIFICACION_SERVICE_URL", "http://notificacion_service:8016"),
-            "TRANSPORTE": os.getenv("TRANSPORTE_SERVICE_URL", "http://transporte_service:8017"),
-            "SALUDO": os.getenv("SALUDO_SERVICE_URL", "http://saludo_service:8018"),
-            "DESPEDIDA": os.getenv("DESPEDIDA_SERVICE_URL", "http://despedida_service:8019"),
-            "RUTA": os.getenv("RUTA_SERVICE_URL", "http://ruta_service:8020"),
-            "NEGOCIO": os.getenv("NEGOCIO_SERVICE_URL", "http://negocio_service:8021"),
-            "SERVICIO": os.getenv("SERVICIO_SERVICE_URL", "http://servicio_service:8022"),
-            "OTRA": os.getenv("OTRA_SERVICE_URL", "http://otra_service:8023")
+            "REGISTRO": os.getenv("REGISTRO_SERVICE_URL", "http://127.0.0.1:8010"),
+            "CONTACTO": os.getenv("CONTACTO_SERVICE_URL", "http://127.0.0.1:8011"),
+            "MENSAJERIA": os.getenv("MENSAJERIA_SERVICE_URL", "http://127.0.0.1:8012"),
+            "VENTA": os.getenv("VENTA_SERVICE_URL", "http://127.0.0.1:8013"),
+            "COMPRA": os.getenv("COMPRA_SERVICE_URL", "http://127.0.0.1:8014"),
+            "INFORMATIVA": os.getenv("INFORMATIVA_SERVICE_URL", "http://127.0.0.1:8015"),
+            "NOTIFICACION": os.getenv("NOTIFICACION_SERVICE_URL", "http://127.0.0.1:8016"),
+            "TRANSPORTE": os.getenv("TRANSPORTE_SERVICE_URL", "http://127.0.0.1:8017"),
+            "SALUDO": os.getenv("SALUDO_SERVICE_URL", "http://127.0.0.1:8018"),
+            "DESPEDIDA": os.getenv("DESPEDIDA_SERVICE_URL", "http://127.0.0.1:8019"),
+            "RUTA": os.getenv("RUTA_SERVICE_URL", "http://127.0.0.1:8020"),
+            "NEGOCIO": os.getenv("NEGOCIO_SERVICE_URL", "http://127.0.0.1:8021"),
+            "SERVICIO": os.getenv("SERVICIO_SERVICE_URL", "http://127.0.0.1:8022"),
+            "OTRA": os.getenv("OTRA_SERVICE_URL", "http://127.0.0.1:8023")
         }
         
         # Componentes del orquestador

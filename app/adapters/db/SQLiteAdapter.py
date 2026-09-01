@@ -131,7 +131,8 @@ class SQLiteAdapter:
                 product_state TEXT,
                 last_vendor TEXT,
                 comm_status TEXT DEFAULT 'online',
-                social_links TEXT
+                social_links TEXT,
+                showthis INTEGER
             )
         """)
 
