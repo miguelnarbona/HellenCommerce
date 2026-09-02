@@ -244,17 +244,17 @@ def get_db():
 # WEBSOCKET - Endpoint principal
 # ============================================================
 
-@app.websocket("/ws")
+# @app.websocket("/ws")
+# @app.websocket("/ws/{user_id}")
+# async def websocket_endpoint(websocket: WebSocket, user_id: str | None = None):
+
 @app.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: str | None = None):
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
     """
     WebSocket endpoint para conexiones persistentes con la AppWeb.
     Reenvía todas las peticiones al Orchestrator (librería interna).
     """
     await websocket.accept()
-
-    if not user_id:
-        user_id = "anonimous"
 
     async def heartbeat():
         """Envía heartbeat periódico para mantener la conexión viva."""
