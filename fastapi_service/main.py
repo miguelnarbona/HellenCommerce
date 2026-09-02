@@ -32,6 +32,7 @@ if sys.platform.startswith("win"):
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware 
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from firebase_admin import auth as firebase_auth
@@ -152,6 +153,11 @@ app = FastAPI(
     description="API pública y WebSocket endpoint. Utiliza Orchestrator como librería interna.",
     version="2.0.1",
     lifespan=lifespan
+)
+
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["*"]
 )
 
 app.add_middleware(
