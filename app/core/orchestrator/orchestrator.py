@@ -10,7 +10,7 @@ Flujo:
 3. Genera prompts personalizados vía worker_service  
 4. Despacha en paralelo a servicios especializados (fan-out)
 5. Unifica respuestas vía mistral_service
-6. Persiste contexto en SQLite/ChromaDB
+6. Persiste contexto en SQLite/ChromaDB/Qdrant
 7. Retorna respuesta al cliente vía WebSocket
 """
 
