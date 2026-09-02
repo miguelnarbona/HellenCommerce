@@ -250,13 +250,14 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     WebSocket endpoint para conexiones persistentes con la AppWeb.
     Reenvía todas las peticiones al Orchestrator (librería interna).
     """
-    await websocket.accept()
 
     # 🚀 Validar que Firebase no reciba un token corrupto antes del accept
     if not user_id or user_id.strip() == "" or user_id == "undefined":
         # Evitamos colgar el servidor cerrando limpiamente si el cliente envía basura
         await websocket.close(code=1008) # 1008: Policy Violation
         return
+    
+    await websocket.accept()
 
     async def heartbeat():
         """Envía heartbeat periódico para mantener la conexión viva."""
