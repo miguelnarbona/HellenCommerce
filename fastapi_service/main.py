@@ -31,9 +31,14 @@ if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body, Depends, HTTPException, Header
+
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.datastructures import Headers
 from fastapi.middleware.trustedhost import TrustedHostMiddleware 
+# 🚀 NUEVA IMPORTACIÓN PARA EL MIDDLEWARE DE WEBSOCKETS EN STARLETTE:
+from starlette.types import ASGIApp, Scope, Receive, Send
 from contextlib import asynccontextmanager
+
 from pydantic import BaseModel
 from firebase_admin import auth as firebase_auth
 import firebase_admin
@@ -155,6 +160,38 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# 🚀 1. MIDDLEWARE PERSONALIZADO: Reescribe el Host para WebSockets puros antes de CORS
+@app.middleware("http")
+async def fix_websocket_cloudflare_host(request, call_next):
+    if request.headers.get("upgrade") == "websocket" or request.scope.get("type") == "websocket":
+        origin = request.headers.get("origin")
+        if origin:
+            host_from_origin = origin.split("//")[-1]
+            headers = dict(request.scope["headers"])
+            headers[b"host"] = host_from_origin.encode("latin-1")
+            request.scope["headers"] = list(headers.items())
+            
+    return await call_next(request)
+
+# Middleware complementario para inyección a nivel de protocolo ASGI (Evita fugas de validación de Starlette)
+class CloudflareWebSocketFixMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] == "websocket":
+            headers = dict(scope.get("headers", []))
+            # Buscar cabecera de origen codificada en bytes de forma segura
+            origin = headers.get(b"origin", b"").decode("latin-1")
+            if origin:
+                host_from_origin = origin.split("//")[-1]
+                headers[b"host"] = host_from_origin.encode("latin-1")
+                scope["headers"] = list(headers.items())
+        await self.app(scope, receive, send)
+
+app.add_middleware(CloudflareWebSocketFixMiddleware)
+
+# 🚀 2. MIDDLEWARES ESTÁNDAR
 app.add_middleware(
     TrustedHostMiddleware, 
     allowed_hosts=["*"]
