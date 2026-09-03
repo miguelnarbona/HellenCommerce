@@ -14,7 +14,7 @@ class PromptBuilderService:
     """Construye prompts personalizados para cada intención detectada."""
     
     def __init__(self, service_url: str = None, base_prompts_path: str = None):
-        self.service_url = service_url or os.getenv("WORKER_SERVICE_URL", "http://worker_service:8003")
+        self.service_url = service_url or os.getenv("WORKER_SERVICE_URL", "http://worker_service:9000")
         from app.utils.paths import hc_path
         self.base_prompts_path = base_prompts_path or hc_path("app/prompts")
     

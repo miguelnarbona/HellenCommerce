@@ -236,7 +236,10 @@ async def socket_maintenance():
 # ============================================================
 def get_db():
     """Obtiene conexión a SQLite."""
-    conn = sqlite3.connect(SQLITE_PATH, check_same_thread=False)
+    # Priorizar SQLITE_PATH del entorno (inyectado por docker-compose).
+    # Si no existe, caer al path resuelto por ``data_path`` al arrancar.
+    db_path = os.getenv("SQLITE_PATH") or SQLITE_PATH
+    conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
