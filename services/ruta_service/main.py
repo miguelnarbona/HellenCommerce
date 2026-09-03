@@ -24,7 +24,7 @@ from app.builder.AppBuilder import AppBuilder
 from app.shared.hf_infer import call_mistral
 from app.core.pipeline.map_logic import MapLogic
 
-LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
+LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://127.0.0.1:8099/ws/logs")
 builder = None
 
 class ProcessRequest(BaseModel):

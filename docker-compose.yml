@@ -20,10 +20,10 @@ services:
       - LLM_MODE=${LLM_MODE:-online}
       - HF_API_KEY=${HF_API_KEY:-}
       - SQLITE_PATH=/sqlite/hellencommerce.db
-      - INTENT_SERVICE_URL=http://intent_service:9010
-      - WORKER_SERVICE_URL=http://worker_service:9000
-      - MISTRAL_SERVICE_URL=http://mistral_service:9001
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - INTENT_SERVICE_URL=http://127.0.0.1:9010
+      - WORKER_SERVICE_URL=http://127.0.0.1:9000
+      - MISTRAL_SERVICE_URL=http://127.0.0.1:9001
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
       - QDRANT_HOST=qdrant_service
       - QDRANT_PORT=6333
       - MQTT_HOST=mosquitto
@@ -50,7 +50,7 @@ services:
         limits:
           memory: 1g
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -83,7 +83,7 @@ services:
         limits:
           memory: 1g
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9010/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9010/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -123,7 +123,7 @@ services:
         limits:
           memory: 4g
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -141,7 +141,7 @@ services:
     environment:
       - LLM_MODE=${LLM_MODE:-online}
       - HF_API_KEY=${HF_API_KEY:-}
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app:/app/app
     depends_on:
@@ -156,7 +156,7 @@ services:
         limits:
           memory: 1g
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9001/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9001/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -191,7 +191,7 @@ services:
         limits:
           memory: 512m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8099/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8099/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -207,7 +207,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - LOGGING_API_URL=http://logging_service:8099
+      - LOGGING_API_URL=http://127.0.0.1:8099
     depends_on:
       logging_service:
         condition: service_healthy
@@ -220,7 +220,7 @@ services:
         limits:
           memory: 512m
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -241,7 +241,7 @@ services:
       - SERVICE_NAME=registro_service
       - SERVICE_PORT=8010
       - SQLITE_PATH=/app/data/app.db
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app/data:/app/data
     depends_on:
@@ -256,7 +256,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8010/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8010/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -288,7 +288,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8011/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8011/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -305,7 +305,7 @@ services:
       - SERVICE_NAME=mensajeria_service
       - SERVICE_PORT=8012
       - SQLITE_PATH=/app/data/app.db
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app/data:/app/data
     depends_on:
@@ -320,7 +320,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8012/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8012/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -337,7 +337,7 @@ services:
       - SERVICE_NAME=venta_service
       - SERVICE_PORT=8013
       - SQLITE_PATH=/app/data/app.db
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app/data:/app/data
     depends_on:
@@ -352,7 +352,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8013/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8013/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -369,7 +369,7 @@ services:
       - SERVICE_NAME=compra_service
       - SERVICE_PORT=8014
       - SQLITE_PATH=/app/data/app.db
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app/data:/app/data
     depends_on:
@@ -384,7 +384,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8014/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8014/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -401,7 +401,7 @@ services:
       - SERVICE_NAME=informativa_service
       - SERVICE_PORT=8015
       - SQLITE_PATH=/app/data/app.db
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app/data:/app/data
     depends_on:
@@ -416,7 +416,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8015/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8015/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -433,7 +433,7 @@ services:
       - SERVICE_NAME=notificacion_service
       - SERVICE_PORT=8016
       - SQLITE_PATH=/app/data/app.db
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app/data:/app/data
     depends_on:
@@ -448,7 +448,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8016/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8016/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -465,7 +465,7 @@ services:
       - SERVICE_NAME=transporte_service
       - SERVICE_PORT=8017
       - SQLITE_PATH=/app/data/app.db
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app/data:/app/data
     depends_on:
@@ -480,7 +480,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8017/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8017/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -496,7 +496,7 @@ services:
       - HF_API_KEY=${HF_API_KEY:-}
       - SERVICE_NAME=saludo_service
       - SERVICE_PORT=8018
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     depends_on:
       logging_service:
         condition: service_healthy
@@ -509,7 +509,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8018/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8018/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -525,7 +525,7 @@ services:
       - HF_API_KEY=${HF_API_KEY:-}
       - SERVICE_NAME=despedida_service
       - SERVICE_PORT=8019
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     depends_on:
       logging_service:
         condition: service_healthy
@@ -538,7 +538,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8019/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8019/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -555,7 +555,7 @@ services:
       - SERVICE_NAME=ruta_service
       - SERVICE_PORT=8020
       - SQLITE_PATH=/app/data/app.db
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app/data:/app/data
     depends_on:
@@ -570,7 +570,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8020/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8020/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -587,7 +587,7 @@ services:
       - SERVICE_NAME=negocio_service
       - SERVICE_PORT=8021
       - SQLITE_PATH=/app/data/app.db
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app/data:/app/data
     depends_on:
@@ -602,7 +602,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8021/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8021/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -619,7 +619,7 @@ services:
       - SERVICE_NAME=servicio_service
       - SERVICE_PORT=8022
       - SQLITE_PATH=/app/data/app.db
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app/data:/app/data
     depends_on:
@@ -634,7 +634,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8022/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8022/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -650,7 +650,7 @@ services:
       - HF_API_KEY=${HF_API_KEY:-}
       - SERVICE_NAME=otra_service
       - SERVICE_PORT=8023
-      - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
+      - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     depends_on:
       logging_service:
         condition: service_healthy
@@ -663,7 +663,7 @@ services:
         limits:
           memory: 256m
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8023/docs"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8023/docs"]
       interval: 30s
       timeout: 10s
       retries: 3

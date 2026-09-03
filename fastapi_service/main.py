@@ -348,7 +348,7 @@ async def chat_api(user_id: str, data: UserMessage):
 async def marcar_notificacion_leida(user_id: str, notif_id: int):
     """Marca una notificación como leída."""
     async with httpx.AsyncClient(timeout=30.0) as client:
-        worker_url = os.getenv("WORKER_SERVICE_URL", "http://worker_service:9000")
+        worker_url = os.getenv("WORKER_SERVICE_URL", "http://127.0.0.1:9000")
         r = await client.post(f"{worker_url}/user/{user_id}/notificacion/{notif_id}/leida")
     return r.json()
 

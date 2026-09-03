@@ -14,7 +14,7 @@ class IntentDetector:
     """Detecta intenciones del usuario consultando al intent_service."""
     
     def __init__(self, service_url: str = None):
-        self.service_url = service_url or os.getenv("INTENT_SERVICE_URL", "http://intent_service:9010")
+        self.service_url = service_url or os.getenv("INTENT_SERVICE_URL", "http://127.0.0.1:9010")
     
     async def detect(
         self,
