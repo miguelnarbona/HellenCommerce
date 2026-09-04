@@ -65,10 +65,11 @@ class ContextManager:
     def save_context(
         self,
         user_id: str,
-        user_msg: str,
-        ai_msg: str,
+        user_msg: str | None = None,
+        ai_msg: str | None = None,
         current_product_query: str | None = None,
         tipo: str = "comprador",
+        **kwargs,
     ):
         # Recuperar historial previo
         conn = self.db._get_conn()
@@ -84,6 +85,17 @@ class ContextManager:
 
         prev_lines                = row[0].split("\n") if (row and row[0]) else []
         prev_current_product_query = row[1] if (row and row[1]) else None
+
+        # Backwards-compatibility: aceptar aliases que algunas partes
+        # del sistema (p.ej. Orchestrator) usan: 'message' -> user_msg,
+        # 'response' -> ai_msg, y 'conversation_id' -> current_product_query.
+        if user_msg is None:
+            user_msg = kwargs.get('user_msg') or kwargs.get('message') or kwargs.get('msg') or ''
+        if ai_msg is None:
+            ai_msg = kwargs.get('ai_msg') or kwargs.get('response') or kwargs.get('reply') or ''
+        if current_product_query is None:
+            # Orchestrator may pass conversation_id; preserve mapping for compatibility
+            current_product_query = kwargs.get('current_product_query', None) or kwargs.get('conversation_id', None)
 
         # COPILOT-Change:
         # Mantener el current_product_query previo cuando no se suministra uno nuevo.
