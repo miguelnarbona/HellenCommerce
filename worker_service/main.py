@@ -13,7 +13,7 @@ if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
 from app.builder.AppBuilder import AppBuilder
 
@@ -31,7 +31,13 @@ class PromptRequest(BaseModel):
     user_id: str
     message: str
     intents: list[str]
-    contexto: dict | None = None
+    # `contexto` puede llegar como:
+    #   - dict  (formato esperado por el worker)
+    #   - list  (historial conversacional plano, frecuente desde el orquestador)
+    #   - None  (sin contexto previo)
+    # Aceptar las 3 formas evita falsos 422 cuando cambia la representación
+    # del historial entre el orquestador (Room/fastapi_service) y worker_service.
+    contexto: dict | list | None = None
 
 # ============================================================
 # LOGGING AL LOGGING_SERVICE
@@ -86,7 +92,18 @@ async def generate_prompts(req: PromptRequest):
         # Utilizamos la lógica de AppBuilder para construir los prompts basados en las intenciones
         # Simulamos que el director puede construir los prompts especializados sin ejecutar la inferencia aún
         
-        contexto_data = req.contexto or {}
+        # `contexto` puede llegar como dict (preferido), list (historial
+        # plano) o None. Lo unificamos siempre a un dict para que el resto
+        # del worker pueda tratarlo de forma homogénea.
+        raw_contexto = req.contexto
+        if raw_contexto is None:
+            contexto_data = {}
+        elif isinstance(raw_contexto, dict):
+            contexto_data = raw_contexto
+        elif isinstance(raw_contexto, list):
+            contexto_data = {"history": raw_contexto, "raw": raw_contexto}
+        else:
+            contexto_data = {"raw": raw_contexto}
         
         # Iteramos sobre las intenciones detectadas para generar un prompt individual por cada una
         for intent in req.intents:
