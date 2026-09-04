@@ -133,6 +133,8 @@ async def synthesize_responses(req: SynthesisRequest):
                 )
 
                 final_response = result["choices"][0]["text"].strip()
+                print(f"Final Response: {final_response}", flush=True)
+                print("Mistral: local unificación exitosa", flush=True)
                 return {"response": final_response}
             except Exception as e:
                 await log_to_logging_service("ERROR", f"Error en inferencia de unificación Mistral local: {e}", line_num=107)
