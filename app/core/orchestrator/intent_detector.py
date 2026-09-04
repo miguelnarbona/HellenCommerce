@@ -2,7 +2,7 @@
 HellenCommerce 2.0.1 - Intent Detector
 
 Componente del orquestador para detección de intenciones.
-Se comunica con intent_service vía HTTP para identificar una o múltiples intenciones.
+Se comunica con intent_service vía HTTP para identificar una o múltiples intencioness.
 """
 
 import httpx
@@ -14,7 +14,7 @@ class IntentDetector:
     """Detecta intenciones del usuario consultando al intent_service."""
     
     def __init__(self, service_url: str = None):
-        self.service_url = service_url or os.getenv("INTENT_SERVICE_URL", "http://intent_service:9010")
+        self.service_url = service_url or os.getenv("INTENT_SERVICE_URL", "http://bunker_intent_service:9010")
     
     async def detect(
         self,
