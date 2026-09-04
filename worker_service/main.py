@@ -13,6 +13,8 @@ if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from fastapi import FastAPI, HTTPException
+import traceback
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
 from app.builder.AppBuilder import AppBuilder
@@ -159,6 +161,16 @@ async def validation_exception_handler(request, exc):
     print(f"❌ ¡ERROR 422 DETECTADO! Detalles de la validación: {exc.errors()}", flush=True)
     print(f"📦 Cuerpo del JSON recibido: {await request.body()}", flush=True)
     return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    # 🚀 Esto imprimirá el archivo y la línea exacta del error en tu consola de Docker
+    print("❌ ¡ERROR 500 CRÍTICO EN EL WORKER!", flush=True)
+    traceback.print_exc() 
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "type": type(exc).__name__}
+    )
 
 @app.get("/health")
 def health():
