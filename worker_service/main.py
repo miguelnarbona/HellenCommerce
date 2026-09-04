@@ -6,6 +6,9 @@ import datetime
 import websockets
 import platform
 
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -132,6 +135,13 @@ def marcar_leida(user_id: str, notif_id: int):
     except Exception as e:
         asyncio.create_task(log_to_logging_service("ERROR", f"Error al marcar notificación: {e}", line_num=120))
         raise HTTPException(status_code=500, detail="Error interno")
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    # 🚀 Esto obligará a Docker a pintar el JSON erróneo en la terminal
+    print(f"❌ ¡ERROR 422 DETECTADO! Detalles de la validación: {exc.errors()}", flush=True)
+    print(f"📦 Cuerpo del JSON recibido: {await request.body()}", flush=True)
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 @app.get("/health")
 def health():
