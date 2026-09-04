@@ -26,7 +26,7 @@ from intent_semantic import detectar_intencion_semantica
 # CONFIGURACIÓN
 # ============================================================
 system = platform.system()
-LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://127.0.0.1:8099/ws/logs")
+LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://bunker_logging_service:8099/ws/logs")
 sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
 from app.utils.paths import hc_path, data_path
 BASE_RES = hc_path("app/resources")

@@ -21,7 +21,7 @@ system = platform.system()
 sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
 from app.shared.hf_infer import call_mistral
 
-LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://127.0.0.1:8099/ws/logs")
+LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://bunker_logging_service:8099/ws/logs")
 
 class ProcessRequest(BaseModel):
     user_id: str

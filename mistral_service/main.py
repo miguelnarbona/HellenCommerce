@@ -23,7 +23,7 @@ from app.utils.paths import data_path
 # ============================================================
 # CONFIGURACIÓN
 # ============================================================
-LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://127.0.0.1:8099/ws/logs")
+LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://bunker_logging_service:8099/ws/logs")
 MODEL_PATH     = data_path("Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf")
 LLM_MODE       = os.getenv("LLM_MODE", "online")
 # Soporta tanto HF_TOKEN (nombre oficial HuggingFace) como HF_API_KEY (alias heredado)

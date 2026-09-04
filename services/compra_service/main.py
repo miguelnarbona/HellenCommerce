@@ -22,7 +22,7 @@ sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append
 from app.builder.AppBuilder import AppBuilder
 from app.shared.hf_infer import call_mistral
 
-LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://127.0.0.1:8099/ws/logs")
+LOGGING_WS_URL = os.getenv("LOGGING_WS_URL", "ws://bunker_logging_service:8099/ws/logs")
 compra_model = None
 builder = None
 
