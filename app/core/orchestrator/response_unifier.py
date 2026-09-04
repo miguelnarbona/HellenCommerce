@@ -15,7 +15,8 @@ class ResponseUnifier:
     """Unifica múltiples respuestas parciales en una sola respuesta cohesiva."""
     
     def __init__(self, mistral_service_url: str = None):
-        self.mistral_service_url = mistral_service_url or os.getenv("MISTRAL_SERVICE_URL", "http://mistral_service:8004")
+        # MISTRAL_SERVICE_URL=http://bunker_mistral_service:9001
+        self.mistral_service_url = mistral_service_url or os.getenv("MISTRAL_SERVICE_URL", "http://bunker_mistral_service:9001")
     
     async def unify(self, partial_responses: List[Dict[str, Any]]) -> str:
         """
