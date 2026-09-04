@@ -39,4 +39,4 @@ COPY app /app/app
 
 EXPOSE 9010
 
-CMD ["python", "-u", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9010"]
+CMD ["python", "-u", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9010", "--log-level", "debug"]

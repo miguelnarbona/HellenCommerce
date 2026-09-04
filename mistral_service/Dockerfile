@@ -29,4 +29,4 @@ COPY app /app/app
 
 EXPOSE 9001
 
-CMD ["python", "-u", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9001"]
+CMD ["python", "-u", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9001", "--log-level", "debug"]

@@ -32,4 +32,4 @@ COPY app /app/app
 EXPOSE 5000
 
 # Comando de arranque
-CMD ["python", "-u", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["python", "-u", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000", "--log-level", "debug"]

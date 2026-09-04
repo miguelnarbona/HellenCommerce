@@ -29,4 +29,4 @@ COPY app /app/app
 
 EXPOSE 8099
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8099"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8099", "--log-level", "debug"]
