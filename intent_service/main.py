@@ -255,6 +255,7 @@ async def infer_intencion(input: InputText):
         # Fallbacks
         try:
             intenciones_semanticas = detectar_intencion_semantica(mensaje)
+            print("INTENCION SEMANTICA (verbo): {intenciones_semanticas}", flush=True)
             valid_semanticas = [i for i in intenciones_semanticas if i in valid_options]
             
             if valid_semanticas:
@@ -265,6 +266,7 @@ async def infer_intencion(input: InputText):
                 intenciones_modelo = valid_kw if valid_kw else ["OTRA"]
         except Exception as e:
             await log_to_logging_service("ERROR", f"Error en fallback semántico: {e}", line_num=0)
+            print("ERROR: Error en fallback semántico", flush=True)
             intenciones_modelo = ["OTRA"]
 
     # Post-proceso navegación
