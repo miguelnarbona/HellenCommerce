@@ -145,8 +145,10 @@ async def lifespan(app: FastAPI):
             await log_to_logging_service("ERROR", f"Fallo al cargar el modelo GGUF: {e}", line_num=0)
     else:
         await log_to_logging_service("INFO", "Bootstrapping intent_service: Iniciando cliente HF Serverless (Modo Online)", line_num=0)
+        print("INFO, Bootstrapping intent_service: Iniciando cliente HF Serverless (Modo Online)", flush=True)
         try:
             hf_client = InferenceClient(token=HF_TOKEN or None)
+            print("HF_CLIENT: {hf_client}", flush=True)
             await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient inicializado → mistralai/Mistral-7B-Instruct-v0.2", line_num=0)
         except Exception as e:
             await log_to_logging_service("ERROR", f"Fallo al cargar cliente HF: {e}", line_num=0)
