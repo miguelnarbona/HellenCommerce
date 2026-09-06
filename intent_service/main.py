@@ -148,7 +148,7 @@ async def lifespan(app: FastAPI):
         print("INFO, Bootstrapping intent_service: Iniciando cliente HF Serverless (Modo Online)", flush=True)
         try:
             hf_client = InferenceClient(token=HF_TOKEN or None)
-            print("HF_CLIENT: {hf_client}", flush=True)
+            print(f"HF_CLIENT: {hf_client}" , flush=True)
             await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient inicializado → mistralai/Mistral-7B-Instruct-v0.2", line_num=0)
         except Exception as e:
             await log_to_logging_service("ERROR", f"Fallo al cargar cliente HF: {e}", line_num=0)
@@ -255,7 +255,7 @@ async def infer_intencion(input: InputText):
         # Fallbacks
         try:
             intenciones_semanticas = detectar_intencion_semantica(mensaje)
-            print("INTENCION SEMANTICA (verbo): {intenciones_semanticas}", flush=True)
+            print(f"INTENCION SEMANTICA (verbo): {intenciones_semanticas}", flush=True)
             valid_semanticas = [i for i in intenciones_semanticas if i in valid_options]
             
             if valid_semanticas:
