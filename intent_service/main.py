@@ -232,18 +232,22 @@ async def infer_intencion(input: InputText):
         if hf_client:
             try:
                 def call_hf():
-                    # ⏳ Forzamos timeout y usamos la estructura nativa correcta
+                    # 🎯 Eliminamos el parámetro 'timeout' de aquí para que no rompa
                     response = hf_client.chat_completion(
                         model="mistralai/Mistral-7B-Instruct-v0.2",
                         messages=[{"role": "user", "content": prompt_mistral}],
                         max_tokens=32,
                         temperature=0.0,
-                        timeout=15, # 👈 Corta rápido si hay microcortes en la red externa
                     )
-                    # 💡 Estructura exacta corregida para el InferenceClient oficial
-                    return response.choices.message.content.strip()
+                    # 💡 Volvemos al índice [0] que es el estándar de tu versión
+                    return response.choices[0].message.content.strip()
 
-                raw_model_output = await asyncio.to_thread(call_hf)
+                # ⏳ Forzamos un timeout asíncrono estricto de 10 segundos a nivel Python
+                raw_model_output = await asyncio.wait_for(
+                    asyncio.to_thread(call_hf), 
+                    timeout=10.0
+                )
+                
                 raw_model_output = raw_model_output.upper()
                 modelo_tokens = re.findall(r"[A-Z]+", raw_model_output)
                 
@@ -251,6 +255,9 @@ async def infer_intencion(input: InputText):
                     if token in valid_options and token not in intenciones_modelo:
                         intenciones_modelo.append(token)
                         
+            except asyncio.TimeoutError:
+                print("[WARN] La API de Hugging Face tardó demasiado. Saltando a modo local...")
+                # Aquí puedes dejar que el código continúe para que responda con lo que tenga
             except Exception as e:
                 await log_to_logging_service("ERROR", f"Error en inferencia HF online: {e}", line_num=0)
                 print(f"[ERROR] Inferencia HF falló: {e}")
