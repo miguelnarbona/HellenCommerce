@@ -147,7 +147,7 @@ async def lifespan(app: FastAPI):
         await log_to_logging_service("INFO", "Bootstrapping intent_service: Iniciando cliente HF Serverless (Modo Online)", line_num=0)
         print("INFO, Bootstrapping intent_service: Iniciando cliente HF Serverless (Modo Online)", flush=True)
         try:
-            hf_client = InferenceClient(token=HF_TOKEN or None)
+            hf_client = InferenceClient(api_key=HF_TOKEN or None)
             print(f"HF_CLIENT: {hf_client}" , flush=True)
             await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient inicializado → mistralai/Mistral-7B-Instruct-v0.2", line_num=0)
         except Exception as e:
@@ -232,13 +232,16 @@ async def infer_intencion(input: InputText):
         if hf_client:
             try:
                 def call_hf():
+                    # ⏳ Forzamos timeout y usamos la estructura nativa correcta
                     response = hf_client.chat_completion(
                         model="mistralai/Mistral-7B-Instruct-v0.2",
                         messages=[{"role": "user", "content": prompt_mistral}],
                         max_tokens=32,
                         temperature=0.0,
+                        timeout=15, # 👈 Corta rápido si hay microcortes en la red externa
                     )
-                    return response.choices[0].message.content.strip()
+                    # 💡 Estructura exacta corregida para el InferenceClient oficial
+                    return response.choices.message.content.strip()
 
                 raw_model_output = await asyncio.to_thread(call_hf)
                 raw_model_output = raw_model_output.upper()
@@ -247,6 +250,7 @@ async def infer_intencion(input: InputText):
                 for token in modelo_tokens:
                     if token in valid_options and token not in intenciones_modelo:
                         intenciones_modelo.append(token)
+                        
             except Exception as e:
                 await log_to_logging_service("ERROR", f"Error en inferencia HF online: {e}", line_num=0)
                 print(f"[ERROR] Inferencia HF falló: {e}")
