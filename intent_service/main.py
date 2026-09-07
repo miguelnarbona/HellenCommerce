@@ -147,7 +147,11 @@ async def lifespan(app: FastAPI):
         await log_to_logging_service("INFO", "Bootstrapping intent_service: Iniciando cliente HF Serverless (Modo Online)", line_num=0)
         print("INFO, Bootstrapping intent_service: Iniciando cliente HF Serverless (Modo Online)", flush=True)
         try:
-            hf_client = InferenceClient(api_key=HF_TOKEN or None)
+            # hf_client = InferenceClient(api_key=HF_TOKEN or None)
+            hf_client = InferenceClient(
+                model="mistralai/Mistral-7B-Instruct-v0.2",
+                api_key=HF_TOKEN or None
+            )
             print(f"HF_CLIENT: {hf_client}" , flush=True)
             await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient inicializado → mistralai/Mistral-7B-Instruct-v0.2", line_num=0)
         except Exception as e:
@@ -231,21 +235,36 @@ async def infer_intencion(input: InputText):
     else:
         if hf_client:
             try:
-                def call_hf():
+                #def call_hf():
                     # 🎯 Eliminamos el parámetro 'timeout' de aquí para que no rompa
-                    response = hf_client.chat_completion(
-                        model="mistralai/Mistral-7B-Instruct-v0.2",
-                        messages=[{"role": "user", "content": prompt_mistral}],
-                        max_tokens=32,
-                        temperature=0.0,
-                    )
+                #    response = hf_client.chat_completion(
+                #        model="mistralai/Mistral-7B-Instruct-v0.2",
+                #        messages=[{"role": "user", "content": prompt_mistral}],
+                #        max_tokens=32,
+                #        temperature=0.0,
+                #    )
                     # 💡 Volvemos al índice [0] que es el estándar de tu versión
-                    return response.choices[0].message.content.strip()
+                #    return response.choices[0].message.content.strip()
 
-                # ⏳ Forzamos un timeout asíncrono estricto de 10 segundos a nivel Python
+                def call_hf():
+                    # 🧠 Formateamos el prompt al estándar nativo que entiende Mistral 7B Instruct
+                    prompt_estructurado = f"<s>{prompt_mistral}"
+                    
+                    # 🚀 Usamos text_generation para forzar el endpoint que tu contenedor SÍ puede ver
+                    response = hf_client.text_generation(
+                        model="mistralai/Mistral-7B-Instruct-v0.2",
+                        prompt=prompt_estructurado,
+                        max_new_tokens=32,    # 💡 En este método el parámetro cambia a max_new_tokens
+                        temperature=0.01      # Mistral requiere un valor ligeramente mayor a 0 en este modo
+                    )
+                    
+                    # 🎯 La respuesta de text_generation es un string directo, no requiere índices [0]
+                    return response.strip()
+
+                # ⏳ Forzamos un timeout asíncrono estricto de 5 segundos a nivel Python
                 raw_model_output = await asyncio.wait_for(
                     asyncio.to_thread(call_hf), 
-                    timeout=10.0
+                    timeout=5.0
                 )
                 
                 raw_model_output = raw_model_output.upper()
