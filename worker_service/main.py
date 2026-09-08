@@ -131,9 +131,22 @@ async def generate_prompts(req: PromptRequest):
         await log_to_logging_service("INFO", f"Prompts generados para {req.user_id} intenciones: {req.intents}", line_num=96)
         
     except Exception as e:
+        # 1. Intentamos enviar el log (si falla, el try/except interno de la función lo absorberá)
         await log_to_logging_service("ERROR", f"Error generando prompts para {req.user_id}: {e}", line_num=99)
-        raise HTTPException(status_code=500, detail=str(e))
         
+        # 2. Imprimimos el error real en la consola del Docker para que tú puedas verlo e investigarlo
+        print(f"[CRÍTICO] Error real al generar prompts: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # 3. 🛡️ LA SALVACIÓN: En lugar de hacer un 'raise' que rompe todo, devolvemos un JSON controlado.
+        # Esto le responde de inmediato a la interfaz y evita que salte el 'context deadline exceeded'.
+        return {
+            "status": "error",
+            "message": "No se pudieron generar los prompts en este momento.",
+            "error_detalle": str(e)
+        }
+            
     return {"user_id": req.user_id, "prompts": prompts_map}
 
 # Preservamos los endpoints auxiliares que estaban en el worker_service original
