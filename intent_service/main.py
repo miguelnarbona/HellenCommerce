@@ -150,7 +150,8 @@ async def lifespan(app: FastAPI):
             # hf_client = InferenceClient(api_key=HF_TOKEN or None)
             hf_client = InferenceClient(
                 model="mistralai/Mistral-7B-Instruct-v0.2",
-                api_key=HF_TOKEN or None
+                api_key=HF_TOKEN or None,
+                base_url="https://huggingface.co" 
             )
             print(f"HF_CLIENT: {hf_client}" , flush=True)
             await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient inicializado → mistralai/Mistral-7B-Instruct-v0.2", line_num=0)
