@@ -89,6 +89,7 @@ app = FastAPI(title="Worker Service - Prompt Generator", lifespan=lifespan)
 @app.post("/prompt")
 async def generate_prompts(req: PromptRequest):
     prompts_map = {}
+    print(f"Entramos a POST /prompt con user_id={req.user_id}, intents={req.intents}, message={req.message}, contexto={req.contexto}")
     
     try:
         # Utilizamos la lógica de AppBuilder para construir los prompts basados en las intenciones
