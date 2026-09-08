@@ -136,7 +136,7 @@ async def generate_prompts(req: PromptRequest):
         
         # 2. Imprimimos el error real en la consola del Docker para que tú puedas verlo e investigarlo
         print(f"[CRÍTICO] Error real al generar prompts: {e}")
-        import traceback
+        import traceback    
         traceback.print_exc()
         
         # 3. 🛡️ LA SALVACIÓN: En lugar de hacer un 'raise' que rompe todo, devolvemos un JSON controlado.
