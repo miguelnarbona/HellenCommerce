@@ -17,8 +17,8 @@ import traceback
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
-# from app.builder.AppBuilder import AppBuilder
-from builder.AppBuilder import AppBuilder
+from app.builder.AppBuilder import AppBuilder
+# from builder.AppBuilder import AppBuilder
 
 # Importamos las dependencias compartidas (simuladas aquí, deben estar en /app/ en el contenedor)
 system = platform.system()   
