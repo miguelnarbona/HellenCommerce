@@ -28,11 +28,55 @@ MODEL_PATH     = data_path("Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4
 LLM_MODE       = os.getenv("LLM_MODE", "online")
 # Soporta tanto HF_TOKEN (nombre oficial HuggingFace) como HF_API_KEY (alias heredado)
 HF_TOKEN       = os.getenv("HF_TOKEN") or os.getenv("HF_API_KEY", "")
+HF_MODEL_CANDIDATES = [
+    os.getenv("HF_MODEL"),
+    "Qwen/Qwen2.5-3B-Instruct",
+    "microsoft/Phi-3.5-mini-instruct",
+    "google/gemma-2-2b-it",
+    "meta-llama/Llama-3.2-3B-Instruct",
+]
+HF_MODEL_CANDIDATES = [m for m in HF_MODEL_CANDIDATES if m]
+HF_MODEL = HF_MODEL_CANDIDATES[0] if HF_MODEL_CANDIDATES else "Qwen/Qwen2.5-3B-Instruct"
 
 # llama_cpp y INFERENCE_EXECUTOR se inicializan lazy solo en modo local
 mistral_model    = None
 hf_client        = None
 INFERENCE_EXECUTOR = None
+
+
+async def ensure_hf_client_ready():
+    global hf_client, HF_MODEL
+
+    if hf_client is None:
+        try:
+            hf_client = InferenceClient(token=HF_TOKEN or None)
+            print(f"✅ HF InferenceClient inicializado", flush=True)
+        except Exception as e:
+            print(f"⚠️  No se pudo inicializar HF InferenceClient: {e}", flush=True)
+            return False
+
+    for candidate in HF_MODEL_CANDIDATES:
+        try:
+            def ping_hf(model_name: str):
+                response = hf_client.chat_completion(
+                    model=model_name,
+                    messages=[{"role": "user", "content": "Responde solo: OK"}],
+                    max_tokens=4,
+                    temperature=0.0,
+                )
+                return bool(response and getattr(response, "choices", None))
+
+            ok = await asyncio.to_thread(ping_hf, candidate)
+            if ok:
+                HF_MODEL = candidate
+                print(f"✅ Modelo HF válido y disponible: {HF_MODEL}", flush=True)
+                return True
+        except Exception as e:
+            print(f"⚠️  Modelo HF no disponible: {candidate} | {type(e).__name__}: {e}", flush=True)
+
+    print("⚠️  Ningún modelo HF compatible respondió con el proveedor activo. Se fallará a modo local si está disponible.", flush=True)
+    return False
+
 
 class SynthesisRequest(BaseModel):
     partials: list[dict]
@@ -85,10 +129,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             await log_to_logging_service("ERROR", f"Fallo al cargar modelo Qwen GGUF: {e}", line_num=66)
     else:
-        await log_to_logging_service("INFO", "Iniciando cliente HuggingFace Serverless (Modo Online) → Qwen/Qwen2.5-7B-Instruct", line_num=0)
+        await log_to_logging_service("INFO", f"Iniciando cliente HuggingFace Serverless (Modo Online) → {HF_MODEL}", line_num=0)
         try:
             hf_client = InferenceClient(token=HF_TOKEN or None)
-            await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient listo.", line_num=0)
+            ready = await ensure_hf_client_ready()
+            if ready:
+                await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient listo y validado.", line_num=0)
+            else:
+                await log_to_logging_service("ERROR", "El cliente HuggingFace se inicializó pero la conexión con el endpoint falló.", line_num=0)
         except Exception as e:
             await log_to_logging_service("ERROR", f"Fallo al cargar el cliente HF: {e}", line_num=0)
 
@@ -143,11 +191,17 @@ async def synthesize_responses(req: SynthesisRequest):
             final_response = f"Respuesta unificada (Mock): {texto_parciales}"
             return {"response": final_response}
     else:
+        if not hf_client:
+            hf_client = InferenceClient(token=HF_TOKEN or None)
+
         if hf_client:
             try:
+                if not await ensure_hf_client_ready():
+                    return {"response": "No se pudo establecer conexión con el endpoint de Hugging Face. Inténtalo de nuevo."}
+
                 def call_hf():
                     response = hf_client.chat_completion(
-                        model="Qwen/Qwen2.5-7B-Instruct",
+                        model=HF_MODEL,
                         messages=[{"role": "user", "content": prompt_mistral}],
                         max_tokens=512,
                         temperature=0.3
@@ -201,11 +255,17 @@ async def infer_direct(req: dict):
                 return {"response": "Error interno del modelo"}
         return {"response": "Modelo no cargado"}
     else:
+        if not hf_client:
+            hf_client = InferenceClient(token=HF_TOKEN or None)
+
         if hf_client:
             try:
+                if not await ensure_hf_client_ready():
+                    return {"response": "No se pudo establecer conexión con el endpoint de Hugging Face. Inténtalo de nuevo."}
+
                 def call_hf():
                     response = hf_client.chat_completion(
-                        model="Qwen/Qwen2.5-7B-Instruct",
+                        model=HF_MODEL,
                         messages=[{"role": "user", "content": prompt}],
                         max_tokens=max_tokens,
                         temperature=temperature

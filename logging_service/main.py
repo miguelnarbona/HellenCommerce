@@ -35,6 +35,15 @@ LOGS_DB_PATH = os.getenv("LOGS_DB_PATH", data_path("logs/hellen_logs.db"))
 LLM_MODE     = os.getenv("LLM_MODE", "online")
 # Soporta tanto HF_TOKEN (nombre oficial HuggingFace) como HF_API_KEY (alias heredado)
 HF_TOKEN     = os.getenv("HF_TOKEN") or os.getenv("HF_API_KEY", "")
+HF_MODEL_CANDIDATES = [
+    os.getenv("HF_MODEL"),
+    "Qwen/Qwen2.5-3B-Instruct",
+    "microsoft/Phi-3.5-mini-instruct",
+    "google/gemma-2-2b-it",
+    "meta-llama/Llama-3.2-3B-Instruct",
+]
+HF_MODEL_CANDIDATES = [m for m in HF_MODEL_CANDIDATES if m]
+HF_MODEL = HF_MODEL_CANDIDATES[0] if HF_MODEL_CANDIDATES else "Qwen/Qwen2.5-3B-Instruct"
 
 # ============================================================
 # BASE DE DATOS DE LOGS (SQLite)
@@ -212,24 +221,28 @@ async def call_external_llm(error_desc: str, code_snippet: str, source_file: str
         # Fallback táctico a coste cero con HuggingFace Serverless
         try:
             hf_client = InferenceClient(token=HF_TOKEN or None)
-            
-            def call_hf():
-                response = hf_client.chat_completion(
-                    model="Qwen/Qwen2.5-72B-Instruct",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_msg}
-                    ],
-                    max_tokens=512,
-                    temperature=0.0
-                )
-                return response.choices[0].message.content.strip()
+            for model_name in HF_MODEL_CANDIDATES:
+                try:
+                    def call_hf(model_name: str):
+                        response = hf_client.chat_completion(
+                            model=model_name,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_msg}
+                            ],
+                            max_tokens=512,
+                            temperature=0.0
+                        )
+                        return response.choices[0].message.content.strip()
 
-            content = await asyncio.to_thread(call_hf)
-            match = re.search(r"```python(.*?)```", content, re.DOTALL)
-            if match:
-                return match.group(1).strip()
-            return content.strip()
+                    content = await asyncio.to_thread(call_hf, model_name)
+                    match = re.search(r"```python(.*?)```", content, re.DOTALL)
+                    if match:
+                        return match.group(1).strip()
+                    return content.strip()
+                except Exception:
+                    continue
+            return "# [Hot-Fix Error] Ningún modelo HF compatible respondió en este proveedor."
         except Exception as e:
             return f"# [Hot-Fix Error] Fallo al contactar HF Serverless API: {e}"
 

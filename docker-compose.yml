@@ -68,6 +68,8 @@ services:
     environment:
       - LLM_MODE=${LLM_MODE:-online}
       - HF_API_KEY=${HF_API_KEY:-}
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HF_MODEL=${HF_MODEL:-Qwen/Qwen2.5-3B-Instruct}
       - LOGGING_WS_URL=ws://logging_service:8099/ws/logs
     volumes:
       - ./app:/app/app
@@ -141,6 +143,8 @@ services:
     environment:
       - LLM_MODE=${LLM_MODE:-online}
       - HF_API_KEY=${HF_API_KEY:-}
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HF_MODEL=${HF_MODEL:-Qwen/Qwen2.5-3B-Instruct}
       - LOGGING_WS_URL=ws://127.0.0.1:8099/ws/logs
     volumes:
       - ./app:/app/app

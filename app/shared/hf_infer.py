@@ -23,7 +23,15 @@ from huggingface_hub import InferenceClient
 # ---------------------------------------------------------------------------
 # Configuración centralizada
 # ---------------------------------------------------------------------------
-_HF_MODEL   = "mistralai/Mistral-7B-Instruct-v0.2"
+HF_MODEL_CANDIDATES = [
+    os.getenv("HF_MODEL"),
+    "Qwen/Qwen2.5-3B-Instruct",
+    "microsoft/Phi-3.5-mini-instruct",
+    "google/gemma-2-2b-it",
+    "meta-llama/Llama-3.2-3B-Instruct",
+]
+HF_MODEL_CANDIDATES = [m for m in HF_MODEL_CANDIDATES if m]
+_HF_MODEL = HF_MODEL_CANDIDATES[0] if HF_MODEL_CANDIDATES else "Qwen/Qwen2.5-3B-Instruct"
 _MAX_TOKENS = 300
 _TEMPERATURE = 0.4
 
@@ -58,15 +66,21 @@ def _infer_sync(prompt: str) -> str:
     """
     client = _get_client()
 
-    # HF chat_completion con messages API (compatible con Mistral instruct)
-    response = client.chat_completion(
-        model=_HF_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=_MAX_TOKENS,
-        temperature=_TEMPERATURE,
-    )
-    # Extraer el string de la respuesta
-    return response.choices[0].message.content.strip()
+    # Probar el modelo configurado y, si falla por proveedor no habilitado,
+    # reintentar con candidatos compatibles hasta encontrar uno que responda.
+    for model_name in HF_MODEL_CANDIDATES:
+        try:
+            response = client.chat_completion(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=_MAX_TOKENS,
+                temperature=_TEMPERATURE,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception:
+            continue
+
+    raise RuntimeError("Ningún modelo HF compatible respondió en este proveedor.")
 
 
 # ---------------------------------------------------------------------------
