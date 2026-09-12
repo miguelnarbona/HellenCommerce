@@ -92,6 +92,16 @@ async def generate_prompts(req: PromptRequest):
     prompts_map = {}
     print(f"Entramos a POST /prompt con user_id={req.user_id}, intents={req.intents}, message={req.message}, contexto={req.contexto}")
     
+    if builder is None or not hasattr(builder, "prompt_builder"):
+        msg = "AppBuilder no está inicializado en este worker; no hay prompt_builder disponible."
+        print(f"[CRÍTICO] {msg}")
+        await log_to_logging_service("ERROR", msg, line_num=96)
+        return {
+            "status": "error",
+            "message": "El worker no está inicializado correctamente.",
+            "error_detalle": msg
+        }
+    
     try:
         # Utilizamos la lógica de AppBuilder para construir los prompts basados en las intenciones
         # Simulamos que el director puede construir los prompts especializados sin ejecutar la inferencia aún
