@@ -30,13 +30,13 @@ LLM_MODE       = os.getenv("LLM_MODE", "online")
 HF_TOKEN       = os.getenv("HF_TOKEN") or os.getenv("HF_API_KEY", "")
 HF_MODEL_CANDIDATES = [
     os.getenv("HF_MODEL"),
-    "Qwen/Qwen2.5-3B-Instruct",
-    "microsoft/Phi-3.5-mini-instruct",
-    "google/gemma-2-2b-it",
-    "meta-llama/Llama-3.2-3B-Instruct",
+    "Qwen/Qwen3-14B",
+    "Qwen/Qwen3-32B",
+    "deepseek-ai/DeepSeek-V3.1",
+    "deepseek-ai/DeepSeek-V4-Flash",
 ]
 HF_MODEL_CANDIDATES = [m for m in HF_MODEL_CANDIDATES if m]
-HF_MODEL = HF_MODEL_CANDIDATES[0] if HF_MODEL_CANDIDATES else "Qwen/Qwen2.5-3B-Instruct"
+HF_MODEL = HF_MODEL_CANDIDATES[0] if HF_MODEL_CANDIDATES else "Qwen/Qwen3-14B"
 
 # llama_cpp y INFERENCE_EXECUTOR se inicializan lazy solo en modo local
 mistral_model    = None
@@ -46,6 +46,36 @@ INFERENCE_EXECUTOR = None
 
 def hf_is_configured() -> bool:
     return bool((HF_TOKEN or "").strip())
+
+
+def extract_hf_text(response) -> str:
+    """Extrae texto de una respuesta de HF sin romper si el contenido viene vacío."""
+    if response is None:
+        return ""
+    try:
+        choices = getattr(response, "choices", None) or []
+        if not choices:
+            return ""
+
+        first_choice = choices[0]
+        message = getattr(first_choice, "message", None)
+        if message is not None:
+            for field_name in ("content", "reasoning_content", "reasoning"):
+                value = getattr(message, field_name, None)
+                if value is not None:
+                    if isinstance(value, str):
+                        return value.strip()
+                    return str(value).strip()
+
+        for field_name in ("text", "content"):
+            value = getattr(first_choice, field_name, None)
+            if value is not None:
+                if isinstance(value, str):
+                    return value.strip()
+                return str(value).strip()
+    except Exception:
+        return ""
+    return ""
 
 
 async def ensure_hf_client_ready():
@@ -224,7 +254,10 @@ async def synthesize_responses(req: SynthesisRequest):
                         max_tokens=512,
                         temperature=0.3
                     )
-                    return response.choices[0].message.content.strip()
+                    text = extract_hf_text(response)
+                    if not text:
+                        raise ValueError("La respuesta de HF llegó vacía o sin contenido.")
+                    return text
 
                 final_response = await asyncio.to_thread(call_hf)
                 return {"response": final_response}
@@ -294,7 +327,10 @@ async def infer_direct(req: dict):
                         max_tokens=max_tokens,
                         temperature=temperature
                     )
-                    return response.choices[0].message.content.strip()
+                    text = extract_hf_text(response)
+                    if not text:
+                        raise ValueError("La respuesta de HF llegó vacía o sin contenido.")
+                    return text
 
                 final_response = await asyncio.to_thread(call_hf)
                 return {"response": final_response}

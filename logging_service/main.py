@@ -233,7 +233,19 @@ async def call_external_llm(error_desc: str, code_snippet: str, source_file: str
                             max_tokens=512,
                             temperature=0.0
                         )
-                        return response.choices[0].message.content.strip()
+                        choices = getattr(response, "choices", None) or []
+                        if not choices:
+                            raise ValueError("HF respondió sin contenido útil.")
+
+                        message = getattr(choices[0], "message", None)
+                        for field_name in ("content", "reasoning_content", "reasoning"):
+                            value = getattr(message, field_name, None) if message is not None else None
+                            if value is not None:
+                                if isinstance(value, str):
+                                    return value.strip()
+                                return str(value).strip()
+
+                        raise ValueError("HF respondió con contenido vacío.")
 
                     content = await asyncio.to_thread(call_hf, model_name)
                     match = re.search(r"```python(.*?)```", content, re.DOTALL)

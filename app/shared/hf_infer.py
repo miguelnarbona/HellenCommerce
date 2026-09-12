@@ -25,13 +25,13 @@ from huggingface_hub import InferenceClient
 # ---------------------------------------------------------------------------
 HF_MODEL_CANDIDATES = [
     os.getenv("HF_MODEL"),
-    "Qwen/Qwen2.5-3B-Instruct",
-    "microsoft/Phi-3.5-mini-instruct",
-    "google/gemma-2-2b-it",
-    "meta-llama/Llama-3.2-3B-Instruct",
+    "Qwen/Qwen3-14B",
+    "Qwen/Qwen3-32B",
+    "deepseek-ai/DeepSeek-V3.1",
+    "deepseek-ai/DeepSeek-V4-Flash",
 ]
 HF_MODEL_CANDIDATES = [m for m in HF_MODEL_CANDIDATES if m]
-_HF_MODEL = HF_MODEL_CANDIDATES[0] if HF_MODEL_CANDIDATES else "Qwen/Qwen2.5-3B-Instruct"
+_HF_MODEL = HF_MODEL_CANDIDATES[0] if HF_MODEL_CANDIDATES else "Qwen/Qwen3-14B"
 _MAX_TOKENS = 300
 _TEMPERATURE = 0.4
 
@@ -50,6 +50,36 @@ def _get_client() -> InferenceClient:
         _hf_client = InferenceClient(token=token or None)
         print(f"✅ HF InferenceClient inicializado → modelo: {_HF_MODEL}", flush=True)
     return _hf_client
+
+
+def _extract_hf_text(response) -> str:
+    """Extrae texto limpio de una respuesta de HuggingFace o devuelve cadena vacía."""
+    if response is None:
+        return ""
+    try:
+        choices = getattr(response, "choices", None) or []
+        if not choices:
+            return ""
+
+        first_choice = choices[0]
+        message = getattr(first_choice, "message", None)
+        if message is not None:
+            for field_name in ("content", "reasoning_content", "reasoning"):
+                value = getattr(message, field_name, None)
+                if value is not None:
+                    if isinstance(value, str):
+                        return value.strip()
+                    return str(value).strip()
+
+        for field_name in ("text", "content"):
+            value = getattr(first_choice, field_name, None)
+            if value is not None:
+                if isinstance(value, str):
+                    return value.strip()
+                return str(value).strip()
+    except Exception:
+        return ""
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +106,9 @@ def _infer_sync(prompt: str) -> str:
                 max_tokens=_MAX_TOKENS,
                 temperature=_TEMPERATURE,
             )
-            return response.choices[0].message.content.strip()
+            text = _extract_hf_text(response)
+            if text:
+                return text
         except Exception:
             continue
 
@@ -111,6 +143,8 @@ async def call_mistral(prompt: str, fallback: str = "") -> str:
         result = await asyncio.to_thread(_infer_sync, prompt)
         return result
     except Exception as e:
-        # Log mínimo a stdout (cada servicio ya tiene su propio logger)
+        # Log mínimo a stdout para que cada servicio deje evidencia real del problema
         print(f"⚠️  HF inference error: {type(e).__name__}: {e}", flush=True)
+        print(f"⚠️  HF candidates probados: {HF_MODEL_CANDIDATES}", flush=True)
+        print(f"⚠️  HF_TOKEN configurado: {bool((os.getenv('HF_TOKEN', '') or '').strip())}", flush=True)
         return fallback
