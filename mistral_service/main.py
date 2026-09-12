@@ -44,8 +44,16 @@ hf_client        = None
 INFERENCE_EXECUTOR = None
 
 
+def hf_is_configured() -> bool:
+    return bool((HF_TOKEN or "").strip())
+
+
 async def ensure_hf_client_ready():
     global hf_client, HF_MODEL
+
+    if not hf_is_configured():
+        print("⚠️  HF_TOKEN no configurado; inferencia online deshabilitada.", flush=True)
+        return False
 
     if hf_client is None:
         try:
@@ -131,12 +139,16 @@ async def lifespan(app: FastAPI):
     else:
         await log_to_logging_service("INFO", f"Iniciando cliente HuggingFace Serverless (Modo Online) → {HF_MODEL}", line_num=0)
         try:
-            hf_client = InferenceClient(token=HF_TOKEN or None)
-            ready = await ensure_hf_client_ready()
-            if ready:
-                await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient listo y validado.", line_num=0)
+            if not hf_is_configured():
+                await log_to_logging_service("ERROR", "HF_TOKEN no configurado; se deshabilita la inferencia online.", line_num=0)
+                hf_client = None
             else:
-                await log_to_logging_service("ERROR", "El cliente HuggingFace se inicializó pero la conexión con el endpoint falló.", line_num=0)
+                hf_client = InferenceClient(token=HF_TOKEN or None)
+                ready = await ensure_hf_client_ready()
+                if ready:
+                    await log_to_logging_service("INFO", "Cliente HuggingFace InferenceClient listo y validado.", line_num=0)
+                else:
+                    await log_to_logging_service("ERROR", "El cliente HuggingFace se inicializó pero la conexión con el endpoint falló.", line_num=0)
         except Exception as e:
             await log_to_logging_service("ERROR", f"Fallo al cargar el cliente HF: {e}", line_num=0)
 
@@ -191,8 +203,14 @@ async def synthesize_responses(req: SynthesisRequest):
             final_response = f"Respuesta unificada (Mock): {texto_parciales}"
             return {"response": final_response}
     else:
-        if not hf_client:
-            hf_client = InferenceClient(token=HF_TOKEN or None)
+        global hf_client
+
+        if not hf_client and hf_is_configured():
+            try:
+                hf_client = InferenceClient(token=HF_TOKEN or None)
+            except Exception as e:
+                await log_to_logging_service("ERROR", f"No se pudo crear el cliente HF: {e}", line_num=0)
+                hf_client = None
 
         if hf_client:
             try:
@@ -255,8 +273,14 @@ async def infer_direct(req: dict):
                 return {"response": "Error interno del modelo"}
         return {"response": "Modelo no cargado"}
     else:
-        if not hf_client:
-            hf_client = InferenceClient(token=HF_TOKEN or None)
+        global hf_client
+
+        if not hf_client and hf_is_configured():
+            try:
+                hf_client = InferenceClient(token=HF_TOKEN or None)
+            except Exception as e:
+                await log_to_logging_service("ERROR", f"No se pudo crear el cliente HF: {e}", line_num=0)
+                hf_client = None
 
         if hf_client:
             try:
