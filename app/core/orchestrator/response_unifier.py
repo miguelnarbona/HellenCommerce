@@ -13,10 +13,22 @@ from typing import List, Dict, Any
 
 class ResponseUnifier:
     """Unifica múltiples respuestas parciales en una sola respuesta cohesiva."""
+
+    @staticmethod
+    def _normalize_service_url(url: str | None) -> str:
+        if not url:
+            return "http://bunker_mistral_service:9001"
+        value = url.strip()
+        alias_map = {
+            "http://127.0.0.1:9001": "http://bunker_mistral_service:9001",
+            "http://mistral_service:9001": "http://bunker_mistral_service:9001",
+            "http://bunker_mistral_service:9001": "http://bunker_mistral_service:9001",
+        }
+        return alias_map.get(value, value)
     
     def __init__(self, mistral_service_url: str = None):
         # MISTRAL_SERVICE_URL=http://bunker_mistral_service:9001
-        self.mistral_service_url = mistral_service_url or os.getenv("MISTRAL_SERVICE_URL", "http://bunker_mistral_service:9001")
+        self.mistral_service_url = self._normalize_service_url(mistral_service_url or os.getenv("MISTRAL_SERVICE_URL", "http://bunker_mistral_service:9001"))
     
     async def unify(self, partial_responses: List[Dict[str, Any]]) -> str:
         """

@@ -15,9 +15,21 @@ from typing import Optional
 
 class LoggingClient:
     """Cliente WebSocket para envío de logs al subsistema de logging."""
+
+    @staticmethod
+    def _normalize_ws_url(url: str | None) -> str:
+        if not url:
+            return "ws://bunker_logging_service:8099/ws/logs"
+        value = url.strip()
+        alias_map = {
+            "ws://127.0.0.1:8099/ws/logs": "ws://bunker_logging_service:8099/ws/logs",
+            "ws://logging_service:8099/ws/logs": "ws://bunker_logging_service:8099/ws/logs",
+            "ws://bunker_logging_service:8099/ws/logs": "ws://bunker_logging_service:8099/ws/logs",
+        }
+        return alias_map.get(value, value)
     
     def __init__(self, logging_ws_url: str = None):
-        self.logging_ws_url = logging_ws_url or os.getenv("LOGGING_WS_URL", "ws://logging_service:8099/ws/logs")
+        self.logging_ws_url = self._normalize_ws_url(logging_ws_url or os.getenv("LOGGING_WS_URL", "ws://bunker_logging_service:8099/ws/logs"))
         self._ws = None
         self._connected = False
         self._reconnect_attempts = 0

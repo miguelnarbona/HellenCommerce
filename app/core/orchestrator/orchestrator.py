@@ -64,6 +64,52 @@ class Orchestrator:
     Orquestador central como librería interna.
     Coordina la comunicación entre FastAPI y todos los microservicios especializados.
     """
+
+    @staticmethod
+    def _normalize_service_url(url: Optional[str], service_name: str, scheme: str = "http") -> str:
+        """Normaliza URLs viejas a los nombres reales de Docker con prefijo bunker."""
+        if not url:
+            return f"{scheme}://bunker_{service_name}"
+
+        value = url.strip()
+        legacy_aliases = {
+            "http://127.0.0.1:9010": "http://bunker_intent_service:9010",
+            "http://intent_service:9010": "http://bunker_intent_service:9010",
+            "https://127.0.0.1:9010": "http://bunker_intent_service:9010",
+            "ws://127.0.0.1:8099/ws/logs": "ws://bunker_logging_service:8099/ws/logs",
+            "ws://logging_service:8099/ws/logs": "ws://bunker_logging_service:8099/ws/logs",
+            "http://bunker_intent_service:9010": "http://bunker_intent_service:9010",
+            "http://bunker_worker_service:9000": "http://bunker_worker_service:9000",
+            "http://bunker_mistral_service:9001": "http://bunker_mistral_service:9001",
+            "ws://bunker_logging_service:8099/ws/logs": "ws://bunker_logging_service:8099/ws/logs",
+        }
+
+        if value in legacy_aliases:
+            return legacy_aliases[value]
+
+        if value.startswith("http://localhost") or value.startswith("https://localhost"):
+            return f"{scheme}://bunker_{service_name}"
+
+        if value.startswith("http://127.0.0.1") or value.startswith("https://127.0.0.1"):
+            return value.replace("127.0.0.1", f"bunker_{service_name}").replace("https://", f"{scheme}://").replace("http://", f"{scheme}://")
+
+        if value.startswith(f"{scheme}://"):
+            host = value.split("//", 1)[1].split("/", 1)[0]
+            if host in {service_name, f"bunker_{service_name}"}:
+                return f"{scheme}://bunker_{service_name}" + ("" if value.split("//", 1)[1].split("/", 1)[1:] == [] else "/" + value.split("//", 1)[1].split("/", 1)[1])
+            if host.startswith("bunker_"):
+                return value
+            return value.replace(host, f"bunker_{service_name}")
+
+        if value.startswith("ws://"):
+            host = value.split("//", 1)[1].split("/", 1)[0]
+            if host in {service_name, f"bunker_{service_name}"}:
+                return f"ws://bunker_{service_name}" + ("" if value.split("//", 1)[1].split("/", 1)[1:] == [] else "/" + value.split("//", 1)[1].split("/", 1)[1])
+            if host.startswith("bunker_"):
+                return value
+            return value.replace(host, f"bunker_{service_name}")
+
+        return value
     
     def __init__(
         self,
@@ -80,28 +126,28 @@ class Orchestrator:
         self.base_prompts_path = base_prompts_path or hc_path("app/prompts")
         self.base_resources_path = base_resources_path or hc_path("app/resources")
         
-        # URLs de microservicios (configurables vía environment)
-        self.intent_service_url = os.getenv("INTENT_SERVICE_URL", "http://127.0.0.1:9010")
-        self.worker_service_url = os.getenv("WORKER_SERVICE_URL", "http://127.0.0.1:9000")
-        self.mistral_service_url = os.getenv("MISTRAL_SERVICE_URL", "http://127.0.0.1:9001")
-        self.logging_ws_url = os.getenv("LOGGING_WS_URL", "ws://127.0.0.1:8099/ws/logs")
+        # URLs de microservicios (configurables vía environment), normalizadas para Docker
+        self.intent_service_url = self._normalize_service_url(os.getenv("INTENT_SERVICE_URL"), "intent_service", "http")
+        self.worker_service_url = self._normalize_service_url(os.getenv("WORKER_SERVICE_URL"), "worker_service", "http")
+        self.mistral_service_url = self._normalize_service_url(os.getenv("MISTRAL_SERVICE_URL"), "mistral_service", "http")
+        self.logging_ws_url = self._normalize_service_url(os.getenv("LOGGING_WS_URL"), "logging_service", "ws")
         
         # URLs de servicios especializados (fan-out)
         self.specialized_services = {
-            "REGISTRO": os.getenv("REGISTRO_SERVICE_URL", "http://127.0.0.1:8010"),
-            "CONTACTO": os.getenv("CONTACTO_SERVICE_URL", "http://127.0.0.1:8011"),
-            "MENSAJERIA": os.getenv("MENSAJERIA_SERVICE_URL", "http://127.0.0.1:8012"),
-            "VENTA": os.getenv("VENTA_SERVICE_URL", "http://127.0.0.1:8013"),
-            "COMPRA": os.getenv("COMPRA_SERVICE_URL", "http://127.0.0.1:8014"),
-            "INFORMATIVA": os.getenv("INFORMATIVA_SERVICE_URL", "http://127.0.0.1:8015"),
-            "NOTIFICACION": os.getenv("NOTIFICACION_SERVICE_URL", "http://127.0.0.1:8016"),
-            "TRANSPORTE": os.getenv("TRANSPORTE_SERVICE_URL", "http://127.0.0.1:8017"),
-            "SALUDO": os.getenv("SALUDO_SERVICE_URL", "http://127.0.0.1:8018"),
-            "DESPEDIDA": os.getenv("DESPEDIDA_SERVICE_URL", "http://127.0.0.1:8019"),
-            "RUTA": os.getenv("RUTA_SERVICE_URL", "http://127.0.0.1:8020"),
-            "NEGOCIO": os.getenv("NEGOCIO_SERVICE_URL", "http://127.0.0.1:8021"),
-            "SERVICIO": os.getenv("SERVICIO_SERVICE_URL", "http://127.0.0.1:8022"),
-            "OTRA": os.getenv("OTRA_SERVICE_URL", "http://127.0.0.1:8023")
+            "REGISTRO": self._normalize_service_url(os.getenv("REGISTRO_SERVICE_URL"), "registro_service", "http"),
+            "CONTACTO": self._normalize_service_url(os.getenv("CONTACTO_SERVICE_URL"), "contacto_service", "http"),
+            "MENSAJERIA": self._normalize_service_url(os.getenv("MENSAJERIA_SERVICE_URL"), "mensajeria_service", "http"),
+            "VENTA": self._normalize_service_url(os.getenv("VENTA_SERVICE_URL"), "venta_service", "http"),
+            "COMPRA": self._normalize_service_url(os.getenv("COMPRA_SERVICE_URL"), "compra_service", "http"),
+            "INFORMATIVA": self._normalize_service_url(os.getenv("INFORMATIVA_SERVICE_URL"), "informativa_service", "http"),
+            "NOTIFICACION": self._normalize_service_url(os.getenv("NOTIFICACION_SERVICE_URL"), "notificacion_service", "http"),
+            "TRANSPORTE": self._normalize_service_url(os.getenv("TRANSPORTE_SERVICE_URL"), "transporte_service", "http"),
+            "SALUDO": self._normalize_service_url(os.getenv("SALUDO_SERVICE_URL"), "saludo_service", "http"),
+            "DESPEDIDA": self._normalize_service_url(os.getenv("DESPEDIDA_SERVICE_URL"), "despedida_service", "http"),
+            "RUTA": self._normalize_service_url(os.getenv("RUTA_SERVICE_URL"), "ruta_service", "http"),
+            "NEGOCIO": self._normalize_service_url(os.getenv("NEGOCIO_SERVICE_URL"), "negocio_service", "http"),
+            "SERVICIO": self._normalize_service_url(os.getenv("SERVICIO_SERVICE_URL"), "servicio_service", "http"),
+            "OTRA": self._normalize_service_url(os.getenv("OTRA_SERVICE_URL"), "otra_service", "http")
         }
         
         # Componentes del orquestador
@@ -218,36 +264,86 @@ class Orchestrator:
             return {"response": "Lo siento, ocurrió un error interno. Por favor intenta de nuevo."}
     
     async def _persist_context(self, ctx: OrchestrationContext):
-        """Persiste el contexto de la conversación en SQLite/ChromaDB."""
+        """Persiste el contexto usando el esquema real activo del proyecto."""
         try:
             if self.context_manager:
-                # Guardar en contexto de memoria
+                # Guardar historial del usuario en usuarios.contexto (esquema activo)
                 self.context_manager.save_context(
                     user_id=ctx.user_id,
-                    message=ctx.message,
-                    response=ctx.final_response,
-                    conversation_id=ctx.conversation_id
+                    user_msg=ctx.message,
+                    ai_msg=ctx.final_response,
+                    current_product_query=ctx.conversation_id,
                 )
-                
-                # Guardar en ChromaDB (búsqueda semántica)
+
+                # Guardar en ChromaDB (búsqueda semántica) si el backend está disponible
                 if hasattr(self.context_manager, 'save_to_rag'):
                     await self.context_manager.save_to_rag(
                         user_id=ctx.user_id,
                         message=ctx.message,
                         response=ctx.final_response
                     )
-                    
-            # Guardar en SQLite
+
+            # Guardar en SQLite usando el modelo activo: conversaciones + mensajes
             if self.get_db:
                 conn = self.get_db()
                 cur = conn.cursor()
+
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS conversaciones (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT NOT NULL,
+                        titulo TEXT,
+                        es_flag INTEGER DEFAULT 0,
+                        created_at TEXT,
+                        updated_at TEXT
+                    )
+                """)
+
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS mensajes (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        conversation_id INTEGER NOT NULL,
+                        user_id TEXT NOT NULL,
+                        rol TEXT NOT NULL,
+                        contenido TEXT NOT NULL,
+                        created_at TEXT
+                    )
+                """)
+
+                if ctx.conversation_id is None:
+                    now = datetime.utcnow().isoformat()
+                    cur.execute(
+                        """
+                        INSERT INTO conversaciones (user_id, titulo, es_flag, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                        (ctx.user_id, None, 0, now, now),
+                    )
+                    ctx.conversation_id = cur.lastrowid
+
+                now = datetime.utcnow().isoformat()
                 cur.execute(
-                    "INSERT INTO conversaciones (user_id, mensaje, respuesta, created_at) VALUES (?, ?, ?, ?)",
-                    (ctx.user_id, ctx.message, ctx.final_response, datetime.utcnow().isoformat())
+                    """
+                    INSERT INTO mensajes (conversation_id, user_id, rol, contenido, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (ctx.conversation_id, ctx.user_id, "user", ctx.message, now),
                 )
+                cur.execute(
+                    """
+                    INSERT INTO mensajes (conversation_id, user_id, rol, contenido, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (ctx.conversation_id, ctx.user_id, "assistant", ctx.final_response, now),
+                )
+                cur.execute(
+                    "UPDATE conversaciones SET updated_at = ? WHERE id = ?",
+                    (now, ctx.conversation_id),
+                )
+
                 conn.commit()
                 conn.close()
-                
+
             await self.log_event("INFO", f"Contexto persistido para {ctx.user_id}", line_number=196)
         except Exception as e:
             await self.log_event("ERROR", f"Error persistiendo contexto: {e}", line_number=198)

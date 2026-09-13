@@ -12,9 +12,21 @@ from typing import List
 
 class IntentDetector:
     """Detecta intenciones del usuario consultando al intent_service."""
+
+    @staticmethod
+    def _normalize_service_url(url: str | None) -> str:
+        if not url:
+            return "http://bunker_intent_service:9010"
+        value = url.strip()
+        alias_map = {
+            "http://127.0.0.1:9010": "http://bunker_intent_service:9010",
+            "http://intent_service:9010": "http://bunker_intent_service:9010",
+            "http://bunker_intent_service:9010": "http://bunker_intent_service:9010",
+        }
+        return alias_map.get(value, value)
     
     def __init__(self, service_url: str = None):
-        self.service_url = service_url or os.getenv("INTENT_SERVICE_URL", "http://bunker_intent_service:9010")
+        self.service_url = self._normalize_service_url(service_url or os.getenv("INTENT_SERVICE_URL", "http://bunker_intent_service:9010"))
     
     async def detect(
         self,
