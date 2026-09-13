@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from huggingface_hub import InferenceClient
+from app.shared.hf_infer import call_chat_model
 
 # Cross-platform paths
 system = platform.system()
@@ -54,42 +55,23 @@ def get_db() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
-    """Crea el esquema si no existe."""
-    os.makedirs(os.path.dirname(LOGS_DB_PATH), exist_ok=True)
-    conn = get_db()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS logs (
-            id                INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp         TEXT NOT NULL,
-            log_level         TEXT NOT NULL,
-            service_origin    TEXT NOT NULL,
-            source_file       TEXT,
-            line_number       INTEGER,
-            file_path         TEXT,
-            code_snippet      TEXT,
-            error_description TEXT,
-            proposed_solution TEXT,
-            status_flag       TEXT DEFAULT 'SOLUCIONADO',
-            created_at        TEXT DEFAULT (datetime('now'))
-        );
-
-        CREATE TABLE IF NOT EXISTS hotfix_queue (
-            id                INTEGER PRIMARY KEY AUTOINCREMENT,
-            log_id            INTEGER REFERENCES logs(id),
-            service_origin    TEXT NOT NULL,
-            source_file       TEXT,
-            line_number       INTEGER,
-            error_description TEXT,
-            proposed_solution TEXT,
-            proposed_code     TEXT,
-            ai_model_used     TEXT,
-            status            TEXT DEFAULT 'PENDIENTE',
-            approved_by       TEXT,
-            approved_at       TEXT,
-            applied_at        TEXT,
-            created_at        TEXT DEFAULT (datetime('now'))
-        );
+            try:
+                for model_name in HF_MODEL_CANDIDATES:
+                    try:
+                        messages = [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_msg}
+                        ]
+                        content = await asyncio.to_thread(call_chat_model, model_name, messages, 512, 0.0)
+                        match = re.search(r"```python(.*?)```", content, re.DOTALL)
+                        if match:
+                            return match.group(1).strip()
+                        return content.strip()
+                    except Exception:
+                        continue
+                return "# [Hot-Fix Error] Ningún modelo HF compatible respondió en este proveedor."
+            except Exception as e:
+                return f"# [Hot-Fix Error] Fallo al contactar HF Serverless API: {e}"
     """)
     conn.commit()
     conn.close()
@@ -218,36 +200,15 @@ async def call_external_llm(error_desc: str, code_snippet: str, source_file: str
         except Exception as e:
             return f"# [Hot-Fix Error] Fallo al contactar LLM externo: {e}"
     else:
-        # Fallback táctico a coste cero con HuggingFace Serverless
+        # Fallback táctico a coste cero con HuggingFace Serverless (router fallback)
         try:
-            hf_client = InferenceClient(token=HF_TOKEN or None)
             for model_name in HF_MODEL_CANDIDATES:
                 try:
-                    def call_hf(model_name: str):
-                        response = hf_client.chat_completion(
-                            model=model_name,
-                            messages=[
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": user_msg}
-                            ],
-                            max_tokens=512,
-                            temperature=0.0
-                        )
-                        choices = getattr(response, "choices", None) or []
-                        if not choices:
-                            raise ValueError("HF respondió sin contenido útil.")
-
-                        message = getattr(choices[0], "message", None)
-                        for field_name in ("content", "reasoning_content", "reasoning"):
-                            value = getattr(message, field_name, None) if message is not None else None
-                            if value is not None:
-                                if isinstance(value, str):
-                                    return value.strip()
-                                return str(value).strip()
-
-                        raise ValueError("HF respondió con contenido vacío.")
-
-                    content = await asyncio.to_thread(call_hf, model_name)
+                    messages = [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_msg}
+                    ]
+                    content = await asyncio.to_thread(call_chat_model, model_name, messages, 512, 0.0)
                     match = re.search(r"```python(.*?)```", content, re.DOTALL)
                     if match:
                         return match.group(1).strip()

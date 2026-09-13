@@ -167,6 +167,39 @@ def _infer_via_router(model_name: str, prompt: str) -> str:
     return _extract_hf_text(data)
 
 
+def call_chat_model(model_name: str, messages: list, max_tokens: int = None, temperature: float = None) -> str:
+    """
+    Llamada unificada para chat completions.
+    Intenta usar el `InferenceClient` localmente; si falla, hace POST al `router.huggingface.co`.
+    `messages` debe ser una lista de dicts con `role`/`content`.
+    """
+    client = _get_client()
+    mt = max_tokens or _MAX_TOKENS
+    temp = temperature if temperature is not None else _TEMPERATURE
+
+    # Intentar vía InferenceClient primero
+    try:
+        response = client.chat_completion(model=model_name, messages=messages, max_tokens=mt, temperature=temp)
+        text = _extract_hf_text(response)
+        if text:
+            return text
+    except Exception:
+        pass
+
+    # Fallback al router HTTP
+    token = (os.getenv("HF_TOKEN", "") or "").strip()
+    if not token:
+        raise RuntimeError("HF_TOKEN ausente para llamada al router HF")
+
+    url = "https://router.huggingface.co/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    payload = {"model": model_name, "messages": messages, "max_tokens": mt, "temperature": temp}
+    resp = requests.post(url, json=payload, headers=headers, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+    return _extract_hf_text(data)
+
+
 # ---------------------------------------------------------------------------
 # Wrapper asíncrono — compatible con el event loop de FastAPI
 # ---------------------------------------------------------------------------

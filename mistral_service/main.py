@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from huggingface_hub import InferenceClient
+from app.shared.hf_infer import call_chat_model
 
 system = platform.system()
 sys.path.append("c:/HellenCommerce") if system == "Windows" else sys.path.append("/app")
@@ -95,16 +96,11 @@ async def ensure_hf_client_ready():
 
     for candidate in HF_MODEL_CANDIDATES:
         try:
-            def ping_hf(model_name: str):
-                response = hf_client.chat_completion(
-                    model=model_name,
-                    messages=[{"role": "user", "content": "Responde solo: OK"}],
-                    max_tokens=4,
-                    temperature=0.0,
-                )
-                return bool(response and getattr(response, "choices", None))
-
-            ok = await asyncio.to_thread(ping_hf, candidate)
+            try:
+                ok_text = await asyncio.to_thread(call_chat_model, candidate, [{"role": "user", "content": "Responde solo: OK"}], 4, 0.0)
+                ok = bool(ok_text)
+            except Exception:
+                ok = False
             if ok:
                 HF_MODEL = candidate
                 print(f"✅ Modelo HF válido y disponible: {HF_MODEL}", flush=True)
@@ -247,19 +243,7 @@ async def synthesize_responses(req: SynthesisRequest):
                 if not await ensure_hf_client_ready():
                     return {"response": "No se pudo establecer conexión con el endpoint de Hugging Face. Inténtalo de nuevo."}
 
-                def call_hf():
-                    response = hf_client.chat_completion(
-                        model=HF_MODEL,
-                        messages=[{"role": "user", "content": prompt_mistral}],
-                        max_tokens=512,
-                        temperature=0.3
-                    )
-                    text = extract_hf_text(response)
-                    if not text:
-                        raise ValueError("La respuesta de HF llegó vacía o sin contenido.")
-                    return text
-
-                final_response = await asyncio.to_thread(call_hf)
+                final_response = await call_chat_model(HF_MODEL, [{"role": "user", "content": prompt_mistral}], max_tokens=512, temperature=0.3)
                 return {"response": final_response}
             except Exception as e:
                 await log_to_logging_service("ERROR", f"Error en inferencia HF de unificación online: {e}", line_num=0)
@@ -320,19 +304,7 @@ async def infer_direct(req: dict):
                 if not await ensure_hf_client_ready():
                     return {"response": "No se pudo establecer conexión con el endpoint de Hugging Face. Inténtalo de nuevo."}
 
-                def call_hf():
-                    response = hf_client.chat_completion(
-                        model=HF_MODEL,
-                        messages=[{"role": "user", "content": prompt}],
-                        max_tokens=max_tokens,
-                        temperature=temperature
-                    )
-                    text = extract_hf_text(response)
-                    if not text:
-                        raise ValueError("La respuesta de HF llegó vacía o sin contenido.")
-                    return text
-
-                final_response = await asyncio.to_thread(call_hf)
+                final_response = await call_chat_model(HF_MODEL, [{"role": "user", "content": prompt}], max_tokens=max_tokens, temperature=temperature)
                 return {"response": final_response}
             except Exception as e:
                 await log_to_logging_service("ERROR", f"Error en inferencia directa HF online: {e}", line_num=0)
