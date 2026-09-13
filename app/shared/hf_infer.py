@@ -19,6 +19,8 @@ Variables de entorno:
 import asyncio
 import os
 from huggingface_hub import InferenceClient
+import requests
+from typing import Mapping
 
 # ---------------------------------------------------------------------------
 # Configuración centralizada
@@ -57,6 +59,25 @@ def _extract_hf_text(response) -> str:
     if response is None:
         return ""
     try:
+        # Soporta objetos con atributos (InferenceClient) y dicts (HTTP router)
+        # 1) Si es un mapping (dict-like), navegar claves esperadas
+        if isinstance(response, dict):
+            choices = response.get("choices") or []
+            if not choices:
+                return ""
+            first_choice = choices[0]
+            message = first_choice.get("message") if isinstance(first_choice, dict) else None
+            if message:
+                for field_name in ("content", "reasoning_content", "reasoning"):
+                    value = message.get(field_name) if isinstance(message, dict) else None
+                    if value:
+                        return str(value).strip()
+            for field_name in ("text", "content"):
+                value = first_choice.get(field_name) if isinstance(first_choice, dict) else None
+                if value:
+                    return str(value).strip()
+
+        # 2) Si es un objeto con atributos (InferenceClient response)
         choices = getattr(response, "choices", None) or []
         if not choices:
             return ""
@@ -110,9 +131,40 @@ def _infer_sync(prompt: str) -> str:
             if text:
                 return text
         except Exception:
-            continue
+            # intentar el router HTTP si el cliente falla (DNS o shape distinto)
+            try:
+                text = _infer_via_router(model_name, prompt)
+                if text:
+                    return text
+            except Exception:
+                continue
 
     raise RuntimeError("Ningún modelo HF compatible respondió en este proveedor.")
+
+
+def _infer_via_router(model_name: str, prompt: str) -> str:
+    """
+    Fallback que llama al endpoint `router.huggingface.co/v1/chat/completions`.
+    Usa formato JSON del nuevo endpoint: {"model":..., "messages": [...]}
+    Retorna string con la primera salida o cadena vacía.
+    """
+    token = (os.getenv("HF_TOKEN", "") or "").strip()
+    if not token:
+        raise RuntimeError("HF_TOKEN ausente para llamada al router HF")
+
+    url = "https://router.huggingface.co/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    payload = {
+        "model": model_name,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": _MAX_TOKENS,
+        "temperature": _TEMPERATURE,
+    }
+    resp = requests.post(url, json=payload, headers=headers, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+    # data is a dict-like response; extract text
+    return _extract_hf_text(data)
 
 
 # ---------------------------------------------------------------------------

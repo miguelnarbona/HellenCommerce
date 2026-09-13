@@ -46,22 +46,30 @@ class MistralModel(IModelExecutor):
     async def _infer_remote(self, prompt: str) -> str:
         headers = {"Authorization": f"Bearer {self.HF_API_KEY}"}
         payload = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": 80,
-                "temperature": 0.7,
-                "top_p": 0.9
-            }
+            "model": self.HF_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 80,
+            "temperature": 0.7,
+            "stream": False,
         }
 
         async with httpx.AsyncClient(timeout=12) as client:
             r = await client.post(
-                f"https://api-inference.huggingface.co/models/{self.HF_MODEL}",
+                "https://router.huggingface.co/v1/chat/completions",
                 headers=headers,
-                json=payload
+                json=payload,
             )
+            r.raise_for_status()
             data = r.json()
-            return data[0]["generated_text"]
+            # extraer contenido de choices[0].message.content o reasoning_content
+            try:
+                first = data.get("choices", [])[0]
+                msg = first.get("message", {}) if isinstance(first, dict) else None
+                if msg:
+                    return msg.get("content") or msg.get("reasoning_content") or ""
+            except Exception:
+                pass
+            return ""
 
     # ==========================================================
     #   API ASYNC HÍBRIDA
