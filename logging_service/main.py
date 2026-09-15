@@ -55,27 +55,27 @@ def get_db() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     return conn
 
-            try:
-                for model_name in HF_MODEL_CANDIDATES:
-                    try:
-                        messages = [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_msg}
-                        ]
-                        content = await asyncio.to_thread(call_chat_model, model_name, messages, 512, 0.0)
-                        match = re.search(r"```python(.*?)```", content, re.DOTALL)
-                        if match:
-                            return match.group(1).strip()
-                        return content.strip()
-                    except Exception:
-                        continue
-                return "# [Hot-Fix Error] Ningún modelo HF compatible respondió en este proveedor."
-            except Exception as e:
-                return f"# [Hot-Fix Error] Fallo al contactar HF Serverless API: {e}"
-    """)
-    conn.commit()
-    conn.close()
-    print(">>> Logs DB inicializada correctamente.")
+#            try:
+#                for model_name in HF_MODEL_CANDIDATES:
+#                    try:
+#                        messages = [
+#                            {"role": "system", "content": system_prompt},
+#                            {"role": "user", "content": user_msg}
+#                        ]
+#                        content = await asyncio.to_thread(call_chat_model, model_name, messages, 512, 0.0)
+#                        match = re.search(r"```python(.*?)```", content, re.DOTALL)
+#                        if match:
+#                            return match.group(1).strip()
+#                        return content.strip()
+#                    except Exception:
+#                        continue
+#                return "# [Hot-Fix Error] Ningún modelo HF compatible respondió en este proveedor."
+#            except Exception as e:
+#                return f"# [Hot-Fix Error] Fallo al contactar HF Serverless API: {e}"
+#    """)
+#    conn.commit()
+#    conn.close()
+#    print(">>> Logs DB inicializada correctamente.")
 
 def persist_log(payload: dict) -> int:
     """Guarda el log en la base de datos y retorna el id generado."""
