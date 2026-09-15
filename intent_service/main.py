@@ -61,7 +61,7 @@ async def log_to_logging_service(level: str, msg: str, status_flag="SOLUCIONADO"
             payload = {
                 "timestamp": now.isoformat(),
                 "log_level": level,
-                "service_origin": "venta_service",
+                "service_origin": "intent_service",
                 "source_file": "main.py",
                 "line_number": line_num,
                 "file_path": __file__,

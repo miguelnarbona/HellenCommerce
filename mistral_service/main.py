@@ -33,8 +33,8 @@ HF_MODEL_CANDIDATES = [
     os.getenv("HF_MODEL"),
     "Qwen/Qwen3-14B",
     "Qwen/Qwen3-32B",
-    "deepseek-ai/DeepSeek-V3.1",
-    "deepseek-ai/DeepSeek-V4-Flash",
+#    "deepseek-ai/DeepSeek-V3.1",
+#    "deepseek-ai/DeepSeek-V4-Flash",
 ]
 HF_MODEL_CANDIDATES = [m for m in HF_MODEL_CANDIDATES if m]
 HF_MODEL = HF_MODEL_CANDIDATES[0] if HF_MODEL_CANDIDATES else "Qwen/Qwen3-14B"

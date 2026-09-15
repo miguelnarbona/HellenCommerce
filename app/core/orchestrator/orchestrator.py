@@ -186,7 +186,7 @@ class Orchestrator:
         Método principal de orquestación. Coordina todo el flujo de procesamiento.
         
         Args:
-            user_id: Identificador único del usuario
+            user_id: Identificador (único) del usuario
             message: Mensaje del usuario
             conversation_id: ID de la conversación actual (opcional)
             location: Ubicación del usuario en formato "lat,lon" (opcional)
@@ -203,7 +203,8 @@ class Orchestrator:
         
         try:
             await self.log_event("INFO", f"Iniciando orquestación para usuario {user_id}", line_number=97)
-            
+            print(f"🟢 Orquestación iniciada para usuario {user_id}", flush=True)
+
             # 1. Cargar contexto previo
             contexto_previo = []
             mercancia_previa = ""
@@ -211,10 +212,11 @@ class Orchestrator:
                 try:
                     contexto_previo, mercancia_previa = self.context_manager.load_context(user_id)
                     await self.log_event("INFO", f"Contexto cargado: {len(contexto_previo)} líneas, mercancía: {mercancia_previa}", line_number=107)
+                    print(f"Contexto cargado: {len(contexto_previo)} líneas, mercancía: {mercancia_previa}", flush=True)
                 except Exception as e:
                     await self.log_event("WARNING", f"Error cargando contexto: {e}", line_number=109)
             
-            # 2. Detectar intención(es)
+            # 2. Detectar intención(es) 
             ctx.intents = await self.intent_detector.detect(
                 message=message,
                 mercancia=mercancia_previa,
@@ -239,10 +241,12 @@ class Orchestrator:
                 location=location
             )
             await self.log_event("INFO", f"Respuestas parciales recibidas: {len(ctx.partial_responses)}", line_number=133)
+            print(f"Respuestas parciales recibidas: {len(ctx.partial_responses)}", flush=True)
             
             # 5. Unificar respuestas (mistral_service)
             if ctx.partial_responses:
                 ctx.final_response = await self.response_unifier.unify(ctx.partial_responses)
+                print(f"Respuestas final: {len(ctx.final_response)}", flush=True)
             else:
                 ctx.final_response = "Lo siento, no pude procesar tu solicitud en este momento."
             
@@ -268,6 +272,8 @@ class Orchestrator:
         try:
             if self.context_manager:
                 # Guardar historial del usuario en usuarios.contexto (esquema activo)
+                # esta funcion trae incluida "_index_interaction_rag" la cual salva el contexto en
+                # Chrome/Qdrant (revisar ContextManager.py Line 184)
                 self.context_manager.save_context(
                     user_id=ctx.user_id,
                     user_msg=ctx.message,
@@ -275,7 +281,7 @@ class Orchestrator:
                     current_product_query=ctx.conversation_id,
                 )
 
-                # Guardar en ChromaDB (búsqueda semántica) si el backend está disponible
+                # Guardar en ChromaDB/Qdrant (búsqueda semántica) si el backend está disponible
                 if hasattr(self.context_manager, 'save_to_rag'):
                     await self.context_manager.save_to_rag(
                         user_id=ctx.user_id,

@@ -75,7 +75,7 @@ class _QdrantBackend:
 
     VECTOR_DIM = 384
 
-    def __init__(self, collection_name: str):
+    def __init__(self, collection_name: str = "hellen_rag"):
         from qdrant_client import QdrantClient
         from qdrant_client.models import Distance, VectorParams
 
@@ -216,6 +216,7 @@ class ChromaAdapter:
 
     def __init__(self, collection_name: str = "hellen_rag"):
         db_type = os.getenv("VECTOR_DB_TYPE", "chromadb").strip().lower()
+        print(f"🔀 Adaptador Inicializado de BD Vectorial (dentro de ChromaAdapter.py line=218):{db_type}", flush=True)
         print(f"🔀 VectorAdapter → backend activo: [{db_type}]", flush=True)
 
         if db_type == "qdrant":

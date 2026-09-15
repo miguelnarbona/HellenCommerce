@@ -13,6 +13,11 @@ from typing import Dict, List, Any
 class PromptBuilderService:
     """Construye prompts personalizados para cada intención detectada."""
 
+    def __init__(self, service_url: str = None, base_prompts_path: str = None):
+        self.service_url = self._normalize_service_url(service_url or os.getenv("WORKER_SERVICE_URL", "http://bunker_worker_service:9000"))
+        from app.utils.paths import hc_path
+        self.base_prompts_path = base_prompts_path or hc_path("app/prompts")
+    
     @staticmethod
     def _normalize_service_url(url: str | None) -> str:
         if not url:
@@ -24,11 +29,6 @@ class PromptBuilderService:
             "http://bunker_worker_service:9000": "http://bunker_worker_service:9000",
         }
         return alias_map.get(value, value)
-    
-    def __init__(self, service_url: str = None, base_prompts_path: str = None):
-        self.service_url = self._normalize_service_url(service_url or os.getenv("WORKER_SERVICE_URL", "http://bunker_worker_service:9000"))
-        from app.utils.paths import hc_path
-        self.base_prompts_path = base_prompts_path or hc_path("app/prompts")
 
     @staticmethod
     def _normalize_contexto(contexto: Any) -> Dict[str, Any]:

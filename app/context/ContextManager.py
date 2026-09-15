@@ -14,6 +14,8 @@ import json
 import time
 import re
 
+from app.adapters.rag.ChromaAdapter import _QdrantBackend
+
 
 class ContextManager:
     """
@@ -33,12 +35,20 @@ class ContextManager:
         # This allows CONTACTO intent to access sellers from previous COMPRA/VENTA searches
         self.last_search_results = {}
 
+        # Si rag=None inicializar rag (de lo contrario seguir con el inicializado)
+        if not self.rag:
+            from app.adapters.rag.ChromaAdapter import ChromaAdapter
+            self.rag = ChromaAdapter() 
+            
     # ---------------------------------------------------------
     # Cargar historial + current_product_query
     # ---------------------------------------------------------
     def load_context(self, user_id: str):
+        # Apertura de la base de datos hellencommerce.db
         conn = self.db._get_conn()
         try:
+            # Se extrae el contexto de la base de datos hellencommerce.db
+            # de la tabla usuarios
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT contexto, current_product_query FROM usuarios WHERE user_id = ?",

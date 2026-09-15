@@ -254,14 +254,16 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     Reenvía todas las peticiones al Orchestrator (librería interna).
     """
 
-    # 🚀 Validar que Firebase no reciba un token corrupto antes del accept
+    # Validar que Firebase no reciba un token corrupto antes del accept
     if not user_id or user_id.strip() == "" or user_id == "undefined":
         # Evitamos colgar el servidor cerrando limpiamente si el cliente envía basura
         await websocket.close(code=1008) # 1008: Policy Violation
         return
-    
+
+    # Apertura del websocket
     await websocket.accept()
 
+    # Mantener la conexion viva fando un toque cada 1.2 segundos
     async def heartbeat():
         """Envía heartbeat periódico para mantener la conexión viva."""
         while True:
@@ -270,19 +272,31 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                 await websocket.send_json({"response": "💡 Conexión activa"})
             except WebSocketDisconnect:
                 break
-
+    
     hb_task = asyncio.create_task(heartbeat())
 
+    # Tratar si la conexion esta en True (abierta) 
     try:
         while True:
             try:
+                # de recibir todas las peticiones entrantes
                 raw = await websocket.receive_text()
             except WebSocketDisconnect:
                 print(f"📡 Cliente {user_id} desconectado", flush=True)
                 break
             
             try:
+                # tratar de leer las peticiones entrantes (raw)
+                # en el formato del sender (`conversation_id`, `message`,`ubicacion (localizacion)` ) 
                 data = json.loads(raw)
+
+                # el user_id no se descarga del raw porque la entrada del websoket lo trae validado
+                # user_id = data.get("user_id")
+                # trazabilidad para comparar que sea el mismo user_id
+                print(f"Verificar que no exista discrepancia en el user_id", flush=True)
+                print(f"websoket_online user_id:{user_id}", flush = True)
+                print(f"raw user_id:{data.get("user_id")} [Este es el que proviene de los datos raw del frontend]", flush=True)
+                
                 conversation_id = data.get("conversation_id")
                 message = data.get("message")
                 location = data.get("ubicacion")
@@ -306,7 +320,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                     location=location
                 )
                 
-                # Enviar respuesta al cliente
+                # Enviar respuesta (response) al cliente --> (bunker_room_frontend)
                 if isinstance(result, dict):
                     await websocket.send_json(result)
                 else:
