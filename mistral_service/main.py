@@ -246,7 +246,14 @@ async def synthesize_responses(req: SynthesisRequest):
                 if not await ensure_hf_client_ready():
                     return {"response": "No se pudo establecer conexión con el endpoint de Hugging Face. Inténtalo de nuevo."}
 
-                final_response = await call_chat_model(HF_MODEL, [{"role": "user", "content": prompt_mistral}], max_tokens=512, temperature=0.3)
+                # final_response = await call_chat_model(HF_MODEL, [{"role": "user", "content": prompt_mistral}], max_tokens=512, temperature=0.3)
+                final_response = await asyncio.to_thread(
+                    call_chat_model, 
+                    HF_MODEL, 
+                    [{"role": "user", "content": prompt_mistral}], 
+                    512, 
+                    0.3
+                )
                 return {"response": final_response}
             except Exception as e:
                 await log_to_logging_service("ERROR", f"Error en inferencia HF de unificación online: {e}", line_num=0)
