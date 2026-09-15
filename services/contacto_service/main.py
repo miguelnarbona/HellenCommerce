@@ -30,23 +30,25 @@ class ProcessRequest(BaseModel):
     prompt: str
 
 async def log_to_logging_service(level: str, msg: str, status_flag="SOLUCIONADO", line_num=0):
+    now = datetime.datetime.now(datetime.timezone.utc)
     try:
         async with websockets.connect(LOGGING_WS_URL) as ws:
             payload = {
-                "timestamp": datetime.datetime.utcnow().isoformat(),
+                "timestamp": now.isoformat(),
                 "log_level": level,
-                "service_origin": "contacto_service",
+                "service_origin": "venta_service",
                 "source_file": "main.py",
                 "line_number": line_num,
                 "file_path": __file__,
-                "code_snippet": msg,
-                "error_description": msg if level in ["ERROR", "WARNING"] else "",
+                "code_snippet": str(msg),
+                "error_description": str(msg) if level in ["ERROR", "WARNING"] else "",
                 "proposed_solution": "",
                 "status_flag": status_flag
             }
             await ws.send(json.dumps(payload))
+            await asyncio.sleep(0.01) 
     except Exception as e:
-        print(f"[DEBUG] Error enviando log (contacto): {e}")
+        print(f"[DEBUG] Error enviando log (venta): {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
