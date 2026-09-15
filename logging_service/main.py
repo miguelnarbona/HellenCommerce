@@ -77,6 +77,47 @@ def get_db() -> sqlite3.Connection:
 #    conn.close()
 #    print(">>> Logs DB inicializada correctamente.")
 
+def init_db():
+    """Crea el esquema si no existe."""
+    os.makedirs(os.path.dirname(LOGS_DB_PATH), exist_ok=True)
+    conn = get_db()
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS logs (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp         TEXT NOT NULL,
+            log_level         TEXT NOT NULL,
+            service_origin    TEXT NOT NULL,
+            source_file       TEXT,
+            line_number       INTEGER,
+            file_path         TEXT,
+            code_snippet      TEXT,
+            error_description TEXT,
+            proposed_solution TEXT,
+            status_flag       TEXT DEFAULT 'SOLUCIONADO',
+            created_at        TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS hotfix_queue (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            log_id            INTEGER REFERENCES logs(id),
+            service_origin    TEXT NOT NULL,
+            source_file       TEXT,
+            line_number       INTEGER,
+            error_description TEXT,
+            proposed_solution TEXT,
+            proposed_code     TEXT,
+            ai_model_used     TEXT,
+            status            TEXT DEFAULT 'PENDIENTE',
+            approved_by       TEXT,
+            approved_at       TEXT,
+            applied_at        TEXT,
+            created_at        TEXT DEFAULT (datetime('now'))
+        );
+    """)
+    conn.commit()
+    conn.close()
+    print(">>> Logs DB inicializada correctamente.")
+    
 def persist_log(payload: dict) -> int:
     """Guarda el log en la base de datos y retorna el id generado."""
     conn = get_db()
