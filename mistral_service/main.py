@@ -207,6 +207,7 @@ async def synthesize_responses(req: SynthesisRequest):
     """
     
     if LLM_MODE == "local":
+        print(f"[Modo Local] Unificando respuestas con Mistral local...", flush=True)
         if mistral_model:
             try:
                 loop = asyncio.get_event_loop()
@@ -249,6 +250,7 @@ async def synthesize_responses(req: SynthesisRequest):
                 return {"response": final_response}
             except Exception as e:
                 await log_to_logging_service("ERROR", f"Error en inferencia HF de unificación online: {e}", line_num=0)
+                print(f"Error en inferencia HF de unificación online: {e}", flush=True)
                 return {"response": "Lo siento, tuve un problema técnico al unificar las respuestas."}
         else:
             final_response = f"Respuesta unificada (Mock): {texto_parciales}"
