@@ -289,13 +289,13 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                 # tratar de leer las peticiones entrantes (raw)
                 # en el formato del sender (`conversation_id`, `message`,`ubicacion (localizacion)` ) 
                 data = json.loads(raw)
-
+                user_id_xtra = data.get("user_id")
                 # el user_id no se descarga del raw porque la entrada del websoket lo trae validado
                 # user_id = data.get("user_id")
                 # trazabilidad para comparar que sea el mismo user_id
                 print(f"Verificar que no exista discrepancia en el user_id", flush=True)
                 print(f"websoket_online user_id:{user_id}", flush = True)
-                print(f"raw user_id:{data.get("user_id")} [Este es el que proviene de los datos raw del frontend]", flush=True)
+                print(f"raw user_id:{user_id_xtra} [Este es el que proviene de los datos raw del frontend]", flush=True)
                 
                 conversation_id = data.get("conversation_id")
                 message = data.get("message")
