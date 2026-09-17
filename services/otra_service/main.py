@@ -35,7 +35,7 @@ async def log_to_logging_service(level: str, msg: str, status_flag="SOLUCIONADO"
             payload = {
                 "timestamp": now.isoformat(),
                 "log_level": level,
-                "service_origin": "venta_service",
+                "service_origin": "otra_service",
                 "source_file": "main.py",
                 "line_number": line_num,
                 "file_path": __file__,
@@ -44,10 +44,11 @@ async def log_to_logging_service(level: str, msg: str, status_flag="SOLUCIONADO"
                 "proposed_solution": "",
                 "status_flag": status_flag
             }
+            print(f"[DEBUG] Enviando log (otra): {payload}")
             await ws.send(json.dumps(payload))
             await asyncio.sleep(0.01) 
     except Exception as e:
-        print(f"[DEBUG] Error enviando log (venta): {e}")
+        print(f"[DEBUG] Error enviando log (otra): {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

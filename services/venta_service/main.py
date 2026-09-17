@@ -45,6 +45,7 @@ async def log_to_logging_service(level: str, msg: str, status_flag="SOLUCIONADO"
                 "proposed_solution": "",
                 "status_flag": status_flag
             }
+            print(f"[DEBUG] Enviando log (venta): {payload}")
             await ws.send(json.dumps(payload))
             await asyncio.sleep(0.01) 
     except Exception as e:
