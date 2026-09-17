@@ -67,11 +67,17 @@ class Orchestrator:
 
     @staticmethod
     def _normalize_service_url(url: Optional[str], service_name: str, scheme: str = "http") -> str:
-        """Normaliza URLs viejas a los nombres reales de Docker con prefijo bunker."""
+        """Normaliza URLs viejas a los nombres reales de Docker con prefijo bunker, respetando túneles externos."""
         if not url:
             return f"{scheme}://bunker_{service_name}"
 
         value = url.strip()
+
+        # 1. PASO EXPRÉS: Si es un túnel público de Cloudflare u otros, NO TOCAR.
+        external_tunnel_indicators = ["trycloudflare.com", "ngrok-free.app", "ngrok.io", "localhost.run"]
+        if any(indicator in value for indicator in external_tunnel_indicators):
+            return value
+
         legacy_aliases = {
             "http://127.0.0.1:9010": "http://bunker_intent_service:9010",
             "http://intent_service:9010": "http://bunker_intent_service:9010",
@@ -101,6 +107,7 @@ class Orchestrator:
                 return value
             return value.replace(host, f"bunker_{service_name}")
 
+        # Retornado a tu lógica original exacta para ws://
         if value.startswith("ws://"):
             host = value.split("//", 1)[1].split("/", 1)[0]
             if host in {service_name, f"bunker_{service_name}"}:
@@ -110,6 +117,8 @@ class Orchestrator:
             return value.replace(host, f"bunker_{service_name}")
 
         return value
+
+        # Error: no se pudo conectar al WS wss://effect-approval-advances-lecture.trycloudflare.com/ws/cX6ApEM1JiQAOjUXVVWjV3NWAaW2: websocket: bad handshake
     
     def __init__(
         self,
