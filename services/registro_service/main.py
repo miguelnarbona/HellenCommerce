@@ -68,26 +68,25 @@ app = FastAPI(title="Specialized Service - REGISTRO", lifespan=lifespan)
 
 @app.post("/process")
 async def process_intent(req: ProcessRequest):
+    """
+    Procesa intenciones de tipo REGISTRO.
+    Recibe el prompt ya ensamblado por el orquestador y lo ejecuta en Mistral/HF.
+    """
     user_id = req.user_id
-    prompt = req.prompt
-    
+    prompt  = req.prompt
+
     try:
-        prompt_mistral = f'''[INST] Eres un asistente especialista en REGISTRO.
-        El usuario ha enviado: {prompt}
-        Responde de manera clara, profesional y concisa pidiendo los datos necesarios para registrarse.
-        [/INST]'''
-        
         partial_response = await call_mistral(
-            prompt_mistral,
-            fallback="Para registrarte, por favor facilítanos: Nombre, Producto/Servicio, Ubicación y Teléfono."
+            prompt,
+            fallback="No se pudo generar una respuesta en este momento."
         )
-            
+
         await log_to_logging_service("INFO", f"Proceso REGISTRO completado para {user_id}", line_num=0)
         return {"intent": "REGISTRO", "partial": partial_response}
-        
+
     except Exception as e:
         await log_to_logging_service("ERROR", f"Error procesando REGISTRO para {user_id}: {e}", line_num=0)
-        return {"intent": "REGISTRO", "partial": "Hubo un problema con tu registro."}
+        return {"intent": "REGISTRO", "partial": "Hubo un problema procesando tu solicitud."}
 
 @app.get("/health")
 def health():

@@ -68,36 +68,25 @@ app = FastAPI(title="Specialized Service - CONTACTO", lifespan=lifespan)
 
 @app.post("/process")
 async def process_intent(req: ProcessRequest):
+    """
+    Procesa intenciones de tipo CONTACTO.
+    Recibe el prompt ya ensamblado por el orquestador y lo ejecuta en Mistral/HF.
+    """
     user_id = req.user_id
-    prompt = req.prompt
-    
+    prompt  = req.prompt
+
     try:
-        # El contacto asume devolver el vendedor previo interactuado
-        db_context = await asyncio.to_thread(
-            builder.business_logic._entregar_datos_previos,
-            user_id
-        )
-        
-        content = db_context.get("content", [])
-        content_json = json.dumps(content, ensure_ascii=False) if content else "Sin información previa de contacto."
-        
-        prompt_mistral = f'''[INST] Eres un asistente especialista en CONTACTO.
-        El usuario ha enviado: {prompt}
-        Datos previos de contacto: {content_json}
-        Responde de manera clara, profesional y concisa con los datos de contacto.
-        [/INST]'''
-        
         partial_response = await call_mistral(
-            prompt_mistral,
-            fallback="Estoy recuperando información de contacto."
+            prompt,
+            fallback="No se pudo generar una respuesta en este momento."
         )
-            
+
         await log_to_logging_service("INFO", f"Proceso CONTACTO completado para {user_id}", line_num=0)
         return {"intent": "CONTACTO", "partial": partial_response}
-        
+
     except Exception as e:
         await log_to_logging_service("ERROR", f"Error procesando CONTACTO para {user_id}: {e}", line_num=0)
-        return {"intent": "CONTACTO", "partial": "Hubo un problema procesando la información de contacto."}
+        return {"intent": "CONTACTO", "partial": "Hubo un problema procesando tu solicitud."}
 
 @app.get("/health")
 def health():

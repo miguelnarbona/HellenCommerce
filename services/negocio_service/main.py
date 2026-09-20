@@ -68,38 +68,25 @@ app = FastAPI(title="Specialized Service - NEGOCIO", lifespan=lifespan)
 
 @app.post("/process")
 async def process_intent(req: ProcessRequest):
+    """
+    Procesa intenciones de tipo NEGOCIO.
+    Recibe el prompt ya ensamblado por el orquestador y lo ejecuta en Mistral/HF.
+    """
     user_id = req.user_id
-    prompt = req.prompt
-    
+    prompt  = req.prompt
+
     try:
-        db_context = await asyncio.to_thread(
-            builder.business_logic.process,
-            prompt, "negocio", user_id, None
-        )
-        
-        content = db_context.get("content", [])
-        if isinstance(content, list) and len(content) > 3:
-            content = content[:3]
-            
-        content_json = json.dumps(content, ensure_ascii=False) if content else "Ningún negocio encontrado."
-        
-        prompt_mistral = f'''[INST] Eres un asistente especialista en NEGOCIO.
-        El usuario ha enviado: {prompt}
-        Resultados de la base de datos: {content_json}
-        Responde de manera clara, profesional y concisa con los negocios encontrados.
-        [/INST]'''
-        
         partial_response = await call_mistral(
-            prompt_mistral,
-            fallback="Estoy buscando negocios cercanos para ti."
+            prompt,
+            fallback="No se pudo generar una respuesta en este momento."
         )
-            
+
         await log_to_logging_service("INFO", f"Proceso NEGOCIO completado para {user_id}", line_num=0)
         return {"intent": "NEGOCIO", "partial": partial_response}
-        
+
     except Exception as e:
         await log_to_logging_service("ERROR", f"Error procesando NEGOCIO para {user_id}: {e}", line_num=0)
-        return {"intent": "NEGOCIO", "partial": "Hubo un problema procesando tu solicitud de negocio."}
+        return {"intent": "NEGOCIO", "partial": "Hubo un problema procesando tu solicitud."}
 
 @app.get("/health")
 def health():

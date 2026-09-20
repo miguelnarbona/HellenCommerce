@@ -68,29 +68,25 @@ app = FastAPI(title="Specialized Service - NOTIFICACION", lifespan=lifespan)
 
 @app.post("/process")
 async def process_intent(req: ProcessRequest):
+    """
+    Procesa intenciones de tipo NOTIFICACION.
+    Recibe el prompt ya ensamblado por el orquestador y lo ejecuta en Mistral/HF.
+    """
     user_id = req.user_id
-    prompt = req.prompt
-    
+    prompt  = req.prompt
+
     try:
-        # Extraemos el núcleo genérico a notificar
-        nucleo = builder.business_logic._extraer_nucleo_generico(prompt)
-        
-        prompt_mistral = f'''[INST] Eres un asistente especialista en NOTIFICACION.
-        El usuario ha enviado: {prompt}
-        Responde de manera clara, profesional y concisa indicando que la alerta fue programada.
-        [/INST]'''
-        
         partial_response = await call_mistral(
-            prompt_mistral,
-            fallback="Tu notificación ha sido procesada."
+            prompt,
+            fallback="No se pudo generar una respuesta en este momento."
         )
-            
+
         await log_to_logging_service("INFO", f"Proceso NOTIFICACION completado para {user_id}", line_num=0)
         return {"intent": "NOTIFICACION", "partial": partial_response}
-        
+
     except Exception as e:
         await log_to_logging_service("ERROR", f"Error procesando NOTIFICACION para {user_id}: {e}", line_num=0)
-        return {"intent": "NOTIFICACION", "partial": "Hubo un problema procesando tu alerta."}
+        return {"intent": "NOTIFICACION", "partial": "Hubo un problema procesando tu solicitud."}
 
 @app.get("/health")
 def health():

@@ -70,32 +70,15 @@ app = FastAPI(title="Specialized Service - VENTA", lifespan=lifespan)
 async def process_intent(req: ProcessRequest):
     """
     Procesa intenciones de tipo VENTA.
-    Busca compradores y genera respuesta via HF Serverless API.
+    Recibe el prompt ya ensamblado por el orquestador y lo ejecuta en Mistral/HF.
     """
     user_id = req.user_id
     prompt  = req.prompt
 
     try:
-        db_context = await asyncio.to_thread(
-            builder.business_logic.process,
-            prompt, "vendedor", user_id, None
-        )
-        content = db_context.get("content", [])
-        if isinstance(content, list) and len(content) > 3:
-            content = content[:3]
-
-        db_json = json.dumps(content, ensure_ascii=False) if content else "Ningún comprador encontrado."
-        prompt_mistral = f"""[INST] Eres el asistente especialista en VENTA.
-        El usuario ha manifestado intención de vender.
-        Mensaje del usuario: {prompt}
-        Compradores interesados encontrados: {db_json}
-
-        Redacta un breve reporte indicando si se encontraron compradores. Sé conciso y profesional.
-        [/INST]"""
-
         partial_response = await call_mistral(
-            prompt_mistral,
-            fallback=f"Ventas encontradas: {len(content)} prospectos."
+            prompt,
+            fallback="No se pudo generar una respuesta en este momento."
         )
 
         await log_to_logging_service("INFO", f"Proceso VENTA completado para {user_id}", line_num=0)
@@ -103,7 +86,7 @@ async def process_intent(req: ProcessRequest):
 
     except Exception as e:
         await log_to_logging_service("ERROR", f"Error procesando VENTA para {user_id}: {e}", line_num=0)
-        return {"intent": "VENTA", "partial": "Hubo un problema procesando tu venta."}
+        return {"intent": "VENTA", "partial": "Hubo un problema procesando tu solicitud."}
 
 @app.get("/health")
 def health():

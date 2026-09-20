@@ -70,39 +70,24 @@ app = FastAPI(title="Specialized Service - INFORMATIVA", lifespan=lifespan)
 @app.post("/process")
 async def process_intent(req: ProcessRequest):
     """
-    Resuelve intenciones INFORMATIVA.
-    Utiliza el RAG (ChromaDB + Embeddings) para buscar respuestas semánticas.
+    Procesa intenciones de tipo INFORMATIVA.
+    Recibe el prompt ya ensamblado por el orquestador y lo ejecuta en Mistral/HF.
     """
     user_id = req.user_id
-    prompt = req.prompt
-    
-    try:
-        rag_context = ""
-        if builder and builder.get_rag and builder.embedder:
-            rag = builder.get_rag()
-            emb = await asyncio.to_thread(builder.embedder.embed, prompt)
-            rag_results = await asyncio.to_thread(rag.query, emb, 3)
+    prompt  = req.prompt
 
-            if rag_results:
-                rag_context = "\n".join([r["text"] for r in rag_results])
-                
-        prompt_mistral = f'''[INST] Eres un asistente especialista en INFORMATIVA.
-        El usuario ha enviado: {prompt}
-        Contexto recuperado de la base de conocimientos: {rag_context}
-        Responde de manera clara, profesional y concisa usando el contexto si es útil.
-        [/INST]'''
-        
+    try:
         partial_response = await call_mistral(
-            prompt_mistral,
-            fallback="Estoy consultando la información disponible para darte respuesta."
+            prompt,
+            fallback="No se pudo generar una respuesta en este momento."
         )
-            
+
         await log_to_logging_service("INFO", f"Proceso INFORMATIVA completado para {user_id}", line_num=0)
         return {"intent": "INFORMATIVA", "partial": partial_response}
-        
+
     except Exception as e:
         await log_to_logging_service("ERROR", f"Error procesando INFORMATIVA para {user_id}: {e}", line_num=0)
-        return {"intent": "INFORMATIVA", "partial": "Hubo un problema recuperando la información."}
+        return {"intent": "INFORMATIVA", "partial": "Hubo un problema procesando tu solicitud."}
 
 @app.get("/health")
 def health():

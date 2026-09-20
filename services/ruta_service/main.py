@@ -74,51 +74,25 @@ app = FastAPI(title="Specialized Service - RUTA", lifespan=lifespan)
 
 @app.post("/process")
 async def process_intent(req: ProcessRequest):
+    """
+    Procesa intenciones de tipo RUTA.
+    Recibe el prompt ya ensamblado por el orquestador y lo ejecuta en Mistral/HF.
+    """
     user_id = req.user_id
-    prompt = req.prompt
-    
-    lat_origen = req.lat_origen
-    lon_origen = req.lon_origen
-    lat_destino = req.lat_destino
-    lon_destino = req.lon_destino
-    
+    prompt  = req.prompt
+
     try:
-        db_context = await asyncio.to_thread(
-            builder.business_logic._entregar_datos_previos,
-            user_id
-        )
-        content = db_context.get("content", [])
-        
-        prompt_mistral = f'''[INST] Eres un asistente especialista en RUTA.
-        El usuario ha enviado: {prompt}
-        Responde de manera clara, profesional y concisa sobre la ruta.
-        [/INST]'''
-        
         partial_response = await call_mistral(
-            prompt_mistral,
-            fallback="Estoy calculando la mejor ruta para ti."
+            prompt,
+            fallback="No se pudo generar una respuesta en este momento."
         )
-            
+
         await log_to_logging_service("INFO", f"Proceso RUTA completado para {user_id}", line_num=0)
-        
-        response = {"intent": "RUTA", "partial": partial_response}
-        
-        if all(v is not None for v in [lat_origen, lon_origen, lat_destino, lon_destino]):
-            try:
-                map_logic = MapLogic()
-                route_info = map_logic.obtener_ruta(
-                    lat_origen, lon_origen, lat_destino, lon_destino
-                )
-                if route_info:
-                    response["route"] = route_info
-            except Exception as e:
-                await log_to_logging_service("WARNING", f"Error fetching route: {e}", line_num=0)
-                
-        return response
-        
+        return {"intent": "RUTA", "partial": partial_response}
+
     except Exception as e:
         await log_to_logging_service("ERROR", f"Error procesando RUTA para {user_id}: {e}", line_num=0)
-        return {"intent": "RUTA", "partial": "Hubo un problema procesando la ruta."}
+        return {"intent": "RUTA", "partial": "Hubo un problema procesando tu solicitud."}
 
 @app.get("/health")
 def health():

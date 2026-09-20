@@ -72,32 +72,15 @@ app = FastAPI(title="Specialized Service - COMPRA", lifespan=lifespan)
 async def process_intent(req: ProcessRequest):
     """
     Procesa intenciones de tipo COMPRA.
-    Extrae la mercancía del prompt, busca vendedores, y genera respuesta via HF.
+    Recibe el prompt ya ensamblado por el orquestador y lo ejecuta en Mistral/HF.
     """
     user_id = req.user_id
     prompt  = req.prompt
 
     try:
-        db_context = await asyncio.to_thread(
-            builder.business_logic.process,
-            prompt, "comprador", user_id, None
-        )
-        content = db_context.get("content", [])
-        if isinstance(content, list) and len(content) > 3:
-            content = content[:3]
-
-        db_json = json.dumps(content, ensure_ascii=False) if content else "Ningún vendedor encontrado."
-        prompt_mistral = f"""[INST] Eres el asistente especialista en COMPRA.
-        El usuario ha manifestado intención de comprar.
-        Mensaje del usuario: {prompt}
-        Vendedores encontrados: {db_json}
-
-        Redacta un breve reporte indicando si se encontraron vendedores. Sé conciso y profesional.
-        [/INST]"""
-
         partial_response = await call_mistral(
-            prompt_mistral,
-            fallback="Compras encontradas: no pude generar la respuesta completa ahora."
+            prompt,
+            fallback="No se pudo generar una respuesta en este momento."
         )
 
         await log_to_logging_service("INFO", f"Proceso COMPRA completado para {user_id}", line_num=0)
@@ -105,7 +88,7 @@ async def process_intent(req: ProcessRequest):
 
     except Exception as e:
         await log_to_logging_service("ERROR", f"Error procesando COMPRA para {user_id}: {e}", line_num=0)
-        return {"intent": "COMPRA", "partial": "Hubo un problema procesando tu compra."}
+        return {"intent": "COMPRA", "partial": "Hubo un problema procesando tu solicitud."}
 
 @app.get("/health")
 def health():

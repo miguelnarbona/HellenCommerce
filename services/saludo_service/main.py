@@ -60,26 +60,25 @@ app = FastAPI(title="Specialized Service - SALUDO", lifespan=lifespan)
 
 @app.post("/process")
 async def process_intent(req: ProcessRequest):
+    """
+    Procesa intenciones de tipo SALUDOS.
+    Recibe el prompt ya ensamblado por el orquestador y lo ejecuta en Mistral/HF.
+    """
     user_id = req.user_id
-    prompt = req.prompt
-    
+    prompt  = req.prompt
+
     try:
-        prompt_mistral = f'''[INST] Eres un asistente especialista en SALUDO.
-        El usuario ha enviado: {prompt}
-        Responde de manera clara, profesional y concisa.
-        [/INST]'''
-        
         partial_response = await call_mistral(
-            prompt_mistral,
-            fallback="¡Hola! ¿En qué te puedo ayudar hoy?"
+            prompt,
+            fallback="No se pudo generar una respuesta en este momento."
         )
-            
-        await log_to_logging_service("INFO", f"Proceso SALUDO completado para {user_id}", line_num=0)
+
+        await log_to_logging_service("INFO", f"Proceso SALUDOS completado para {user_id}", line_num=0)
         return {"intent": "SALUDOS", "partial": partial_response}
-        
+
     except Exception as e:
-        await log_to_logging_service("ERROR", f"Error procesando SALUDO para {user_id}: {e}", line_num=0)
-        return {"intent": "SALUDOS", "partial": "¡Hola!"}
+        await log_to_logging_service("ERROR", f"Error procesando SALUDOS para {user_id}: {e}", line_num=0)
+        return {"intent": "SALUDOS", "partial": "Hubo un problema procesando tu solicitud."}
 
 @app.get("/health")
 def health():

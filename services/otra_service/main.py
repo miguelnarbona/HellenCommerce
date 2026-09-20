@@ -61,26 +61,25 @@ app = FastAPI(title="Specialized Service - OTRA", lifespan=lifespan)
 
 @app.post("/process")
 async def process_intent(req: ProcessRequest):
+    """
+    Procesa intenciones de tipo OTRA.
+    Recibe el prompt ya ensamblado por el orquestador y lo ejecuta en Mistral/HF.
+    """
     user_id = req.user_id
-    prompt = req.prompt
-    
+    prompt  = req.prompt
+
     try:
-        prompt_mistral = f'''[INST] Eres un asistente especialista en OTRA.
-        El usuario ha enviado un mensaje genérico o no clasificado: {prompt}
-        Responde de manera clara, profesional y concisa.
-        [/INST]'''
-        
         partial_response = await call_mistral(
-            prompt_mistral,
-            fallback="Estoy procesando tu mensaje. Por favor espera un momento."
+            prompt,
+            fallback="No se pudo generar una respuesta en este momento."
         )
-            
+
         await log_to_logging_service("INFO", f"Proceso OTRA completado para {user_id}", line_num=0)
         return {"intent": "OTRA", "partial": partial_response}
-        
+
     except Exception as e:
         await log_to_logging_service("ERROR", f"Error procesando OTRA para {user_id}: {e}", line_num=0)
-        return {"intent": "OTRA", "partial": "Lo siento, tuve un problema interno."}
+        return {"intent": "OTRA", "partial": "Hubo un problema procesando tu solicitud."}
 
 @app.get("/health")
 def health():
