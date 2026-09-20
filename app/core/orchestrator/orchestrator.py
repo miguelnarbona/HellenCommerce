@@ -245,7 +245,7 @@ class Orchestrator:
                 contexto=contexto_previo
             )
             await self.log_event("INFO", f"Prompts generados: {len(ctx.prompts)}", line_number=125)
-            print(f"Prompts generados: {ctx.prompts}", flush=True)
+            print(f"[INFO]: Prompts generados: {ctx.prompts}", flush=True)
             
             # 4. Procesamiento especializado (fan-out paralelo)
             ctx.partial_responses = await self.dispatcher.dispatch(
@@ -260,7 +260,7 @@ class Orchestrator:
             # 5. Unificar respuestas (mistral_service)
             if ctx.partial_responses:
                 ctx.final_response = await self.response_unifier.unify(ctx.partial_responses)
-                print(f"Respuestas final: {len(ctx.final_response)}", flush=True)
+                print(f"Respuestas final (From Mistral): {len(ctx.final_response)}", flush=True)
             else:
                 ctx.final_response = "Lo siento, no pude procesar tu solicitud en este momento."
             

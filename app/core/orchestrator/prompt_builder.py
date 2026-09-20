@@ -396,6 +396,7 @@ class PromptBuilderService:
             }
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
+                    # bunker_worker_service/enrich_prompt
                     f"{self.service_url}/enrich_prompt",
                     json=payload,
                 )
