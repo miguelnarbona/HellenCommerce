@@ -192,20 +192,24 @@ app = FastAPI(title="Mistral Unification Service", lifespan=lifespan)
 async def synthesize_responses(req: SynthesisRequest):
     partials = req.partials
     
-    texto_parciales = ""
-    for idx, partial in enumerate(partials):
-        intent = partial.get("intent", "OTRA")
-        content = partial.get("partial", "")
-        texto_parciales += f"\n[Información de {intent}]: {content}"
+    if len(partials) == 1 and partials[0].get("intent") == "MULTI":
+        print(f"🔀 [Mistral] Ejecutando prompt MULTI directo (sin meta-wrapper)", flush=True)
+        prompt_mistral = partials[0].get("partial", "")
+    else:
+        texto_parciales = ""
+        for idx, partial in enumerate(partials):
+            intent = partial.get("intent", "OTRA")
+            content = partial.get("partial", "")
+            texto_parciales += f"\n[Información de {intent}]: {content}"
+            
+        prompt_mistral = f"""
+        [INST] Eres el asistente principal. Tu tarea es unificar y redactar una única respuesta final y cohesiva para el usuario basándote en la siguiente información fragmentada que proviene de distintos servicios especializados.
+        Redacta de manera natural, amable y directa. NO repitas información. NO menciones que la información viene de "diferentes servicios" ni Uses "[Información de...]".
         
-    prompt_mistral = f"""
-    [INST] Eres el asistente principal. Tu tarea es unificar y redactar una única respuesta final y cohesiva para el usuario basándote en la siguiente información fragmentada que proviene de distintos servicios especializados.
-    Redacta de manera natural, amable y directa. NO repitas información. NO menciones que la información viene de "diferentes servicios" ni Uses "[Información de...]".
-    
-    Información fragmentada a unificar:
-    {texto_parciales}
-    [/INST]
-    """
+        Información fragmentada a unificar:
+        {texto_parciales}
+        [/INST]
+        """
     
     if LLM_MODE == "local":
         print(f"[Modo Local] Unificando respuestas con Mistral local...", flush=True)

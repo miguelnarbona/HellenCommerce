@@ -74,7 +74,7 @@ class Orchestrator:
         value = url.strip()
 
         # 1. PASO EXPRÉS: Si es un túnel público de Cloudflare u otros, NO TOCAR.
-        external_tunnel_indicators = ["trycloudflare.com", "ngrok-free.app", "ngrok.io", "localhost.run"]
+        external_tunnel_indicators = ["trycloudflare.com", "-free.app", "ngrok.io", "localhost.run"]
         if any(indicator in value for indicator in external_tunnel_indicators):
             return value
 
@@ -232,7 +232,11 @@ class Orchestrator:
                 contexto=" ".join(contexto_previo)
             )
             await self.log_event("INFO", f"Intenciones detectadas: {ctx.intents}", line_number=117)
-            
+            print(f"Intenciones detectadas: {ctx.intents}", flush=True)
+
+            ################################################################################
+            # AQUI ESTA EL PROBLEMA
+            ################################################################################
             # 3. Generar prompts personalizados por intención
             ctx.prompts = await self.prompt_builder.build_prompts(
                 user_id=user_id,
@@ -241,6 +245,7 @@ class Orchestrator:
                 contexto=contexto_previo
             )
             await self.log_event("INFO", f"Prompts generados: {len(ctx.prompts)}", line_number=125)
+            print(f"Prompts generados: {ctx.prompts}", flush=True)
             
             # 4. Procesamiento especializado (fan-out paralelo)
             ctx.partial_responses = await self.dispatcher.dispatch(

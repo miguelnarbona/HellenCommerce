@@ -42,9 +42,10 @@ class ResponseUnifier:
         """
         try:
             # Si solo hay una respuesta y no tiene errores, retornarla directamente
+            # EXCEPTO si es MULTI, ya que MULTI contiene el prompt crudo que debe ser ejecutado por el LLM
             if len(partial_responses) == 1:
                 response = partial_responses[0]
-                if not response.get("error"):
+                if not response.get("error") and response.get("intent") != "MULTI":
                     return response.get("partial", "")
             
             # Filtrar respuestas con error

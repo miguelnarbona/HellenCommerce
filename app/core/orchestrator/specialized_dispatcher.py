@@ -40,25 +40,41 @@ class SpecializedDispatcher:
         location: str = None
     ) -> List[Dict[str, Any]]:
         """
-        Despacha prompts a los microservicios especializados en paralelo.
-        
+        Despacha prompts a los microservicios especializados en paralelo (fan-out).
+
+        Caso especial MULTI: cuando el PromptBuilder detecta múltiples intenciones
+        retorna {"MULTI": prompt_completo}. En ese caso el dispatcher no hace fan-out
+        sino que pasa el prompt directamente a mistral_service via response_unifier.
+
         Args:
             user_id: Identificador del usuario
-            prompts_map: Diccionario {intencion: prompt}
+            prompts_map: Diccionario {intencion: prompt}. Puede ser {"MULTI": prompt}.
             message: Mensaje original (para fallback)
             location: Ubicación del usuario (para servicios de ruta/transporte)
-            
+
         Returns:
             Lista de respuestas parciales de cada servicio
         """
         tasks = []
-        
+
+        # ── CASO ESPECIAL: Multi-intención ──────────────────────────────────
+        # El PromptBuilder ya ensambló un único prompt coherente con prompt_multi_intencion.txt.
+        # No hay fan-out: retornamos el prompt directamente para que mistral_service lo procese.
+        if "MULTI" in prompts_map:
+            print(
+                f"🔀 [Dispatcher] Modo MULTI-INTENCIÓN detectado para user={user_id}. "
+                f"Enviando prompt unificado directamente a mistral_service.",
+                flush=True,
+            )
+            return [{"intent": "MULTI", "partial": prompts_map["MULTI"], "metadata": {}}]
+
+        # ── MODO NORMAL: Fan-out por intención ──────────────────────────────
         for intent, prompt in prompts_map.items():
             service_url = self.specialized_services.get(intent)
             if not service_url:
                 print(f"⚠️ Servicio no encontrado para intención: {intent}", flush=True)
                 continue
-            
+
             task = self._call_specialized_service(
                 intent=intent,
                 url=service_url,
@@ -67,14 +83,14 @@ class SpecializedDispatcher:
                 location=location
             )
             tasks.append(task)
-        
+
         if not tasks:
             # Si no hay servicios especializados, retornar fallback
             return [{"intent": "FALLBACK", "partial": message, "error": "No services available"}]
-        
+
         # Ejecutar todas las llamadas en paralelo (fan-out)
         responses = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Filtrar respuestas válidas
         valid_responses = []
         for i, response in enumerate(responses):
@@ -88,9 +104,10 @@ class SpecializedDispatcher:
                 })
             elif isinstance(response, dict):
                 valid_responses.append(response)
-        
+
         return valid_responses
-    
+
+
     async def _call_specialized_service(
         self,
         intent: str,

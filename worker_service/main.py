@@ -34,13 +34,22 @@ class PromptRequest(BaseModel):
     user_id: str
     message: str
     intents: list[str]
-    # `contexto` puede llegar como:
-    #   - dict  (formato esperado por el worker)
-    #   - list  (historial conversacional plano, frecuente desde el orquestador)
-    #   - None  (sin contexto previo)
-    # Aceptar las 3 formas evita falsos 422 cuando cambia la representación
-    # del historial entre el orquestador (Room/fastapi_service) y worker_service.
+    # `contexto` puede llegar como dict, list o None.
     contexto: dict | list | None = None
+
+
+class EnrichPromptRequest(BaseModel):
+    """
+    Payload para el endpoint /enrich_prompt.
+    Recibe el prompt ya ensamblado por el orquestador y lo enriquece
+    con datos de negocio extraídos de hellencommerce.db.
+    """
+    user_id: str
+    intent: str
+    assembled_prompt: str   # Prompt completo ensamblado (system + contexto + message)
+    message: str
+    contexto: dict | list | None = None
+
 
 # ============================================================
 # LOGGING AL LOGGING_SERVICE
@@ -161,6 +170,113 @@ async def generate_prompts(req: PromptRequest):
         }
             
     return {"user_id": req.user_id, "prompts": prompts_map}
+
+
+# ============================================================
+# ENDPOINT PRINCIPAL: /enrich_prompt
+# Recibe el prompt ya ensamblado por PromptBuilderService y lo
+# enriquece con datos de negocio de hellencommerce.db.
+# ============================================================
+@app.post("/enrich_prompt")
+async def enrich_prompt(req: EnrichPromptRequest):
+    """
+    Enriquece el prompt ya ensamblado con datos de negocio de hellencommerce.db.
+
+    Flujo:
+      1. Recibe el prompt completo (system + historial + RAG + mensaje).
+      2. Según la intención, consulta hellencommerce.db para obtener datos
+         de vendedores, compradores, negocios, etc.
+      3. Inyecta los datos encontrados en el bloque DATOS_DE_LA_BASE_DE_DATOS
+         al final del prompt.
+      4. Si no hay datos o el builder no está disponible, retorna el prompt
+         tal cual (siempre es un prompt real y funcional).
+    """
+    print(
+        f"📥 [worker/enrich_prompt] user={req.user_id} | intent={req.intent} | "
+        f"prompt_len={len(req.assembled_prompt)}",
+        flush=True,
+    )
+
+    enriched_prompt = req.assembled_prompt  # valor por defecto: prompt ya funcional
+
+    try:
+        datos_bd: list[str] = []
+
+        # ── Consulta a hellencommerce.db según intención ────────────────────
+        if builder is not None and hasattr(builder, "query_adapter") and builder.query_adapter:
+            intent_upper = req.intent.upper()
+
+            if intent_upper == "COMPRA":
+                # Usuario quiere comprar → buscar VENDEDORES en la BD
+                resultados = builder.query_adapter.query(
+                    tipo_usuario="comprador",
+                    mercancia=req.message,
+                    top_k=5,
+                )
+                for r in resultados:
+                    datos_bd.append(r.get("text", ""))
+
+            elif intent_upper == "VENTA":
+                # Usuario quiere vender → buscar COMPRADORES en la BD
+                resultados = builder.query_adapter.query(
+                    tipo_usuario="vendedor",
+                    mercancia=req.message,
+                    top_k=5,
+                )
+                for r in resultados:
+                    datos_bd.append(r.get("text", ""))
+
+            elif intent_upper in ("NEGOCIO", "SERVICIO", "INFORMATIVA"):
+                resultados = builder.query_adapter.query_context(
+                    user_id=req.user_id,
+                    text=req.message,
+                    top_k=5,
+                )
+                for r in resultados:
+                    datos_bd.append(r.get("text", ""))
+
+            elif intent_upper == "CONTACTO":
+                # Reutilizar resultados de búsqueda previos si existen
+                if hasattr(builder, "context_manager") and builder.context_manager:
+                    search_cache = builder.context_manager.get_search_results(req.user_id)
+                    if search_cache:
+                        for item in search_cache.get("contenido", []):
+                            datos_bd.append(str(item))
+
+        # ── Inyección de datos en el prompt ────────────────────────────────
+        if datos_bd:
+            datos_str = "\n".join(f"  • {d}" for d in datos_bd if d.strip())
+            enriched_prompt = (
+                req.assembled_prompt
+                + "\n\nDATOS_DE_LA_BASE_DE_DATOS:\n"
+                + datos_str
+            )
+            print(
+                f"✅ [worker/enrich_prompt] {len(datos_bd)} registros inyectados "
+                f"para intent={req.intent} user={req.user_id}",
+                flush=True,
+            )
+        else:
+            print(
+                f"ℹ️ [worker/enrich_prompt] Sin datos adicionales de BD "
+                f"para intent={req.intent}. Prompt retornado sin cambios.",
+                flush=True,
+            )
+
+        await log_to_logging_service(
+            "INFO",
+            f"enrich_prompt: user={req.user_id} intent={req.intent} datos_bd={len(datos_bd)}",
+            line_num=0,
+        )
+
+    except Exception as e:
+        print(f"⚠️ [worker/enrich_prompt] Error enriqueciendo prompt: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        enriched_prompt = req.assembled_prompt  # fallback: prompt ensamblado ya es funcional
+
+    return {"user_id": req.user_id, "intent": req.intent, "enriched_prompt": enriched_prompt}
+
 
 # Preservamos los endpoints auxiliares que estaban en el worker_service original
 @app.post("/user/{user_id}/transporte/solicitar")
